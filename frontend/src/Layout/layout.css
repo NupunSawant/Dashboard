@@ -1,0 +1,24 @@
+.layout {
+  background: #f4f6f8;
+  min-height: 100vh;
+}
+
+/* Sidebar width variables */
+:root {
+  --sidebar-expanded: 240px;
+  --sidebar-collapsed: 72px;
+  --navbar-height: 56px;
+}
+
+/* Main content wrapper */
+.main-content {
+  margin-left: var(--sidebar-expanded);
+  padding: 12px 16px;
+  min-height: 100vh;
+  transition: margin-left 0.2s ease;
+}
+
+/* If sidebar collapses */
+.layout.sidebar-collapsed .main-content {
+  margin-left: var(--sidebar-collapsed);
+}

@@ -1,0 +1,146 @@
+#page-topbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1002;
+  background-color: #fff;
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.1);
+}
+
+.layout-width {
+  max-width: 100%;
+  padding: 0 1.5rem;
+}
+
+.navbar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+
+.navbar-brand-box {
+  display: flex;
+  align-items: center;
+  padding: 0 1rem 0 0;
+}
+
+/* Hamburger icon */
+.hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hamburger-icon span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background-color: #495057;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.hamburger-icon.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.hamburger-icon.open span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger-icon.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Brand */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #333;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.brand-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #405189;
+}
+
+.brand-text {
+  color: #405189;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Header items */
+.header-item {
+  color: #495057 !important;
+  padding: 0 0.75rem;
+  height: 60px;
+  display: inline-flex;
+  align-items: center;
+  background: transparent !important;
+  border: none !important;
+}
+
+.header-item:hover {
+  color: #405189 !important;
+}
+
+/* Icon btn */
+.icon-btn {
+  font-size: 1.2rem;
+  color: #495057;
+  background: transparent;
+  border: none;
+}
+
+.icon-btn:hover {
+  color: #405189;
+}
+
+/* Avatar */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: #405189;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.profile-name {
+  margin-left: 8px;
+  font-size: 0.9rem;
+  color: #495057;
+  font-weight: 500;
+}
+
+.profile-btn {
+  display: flex;
+  align-items: center;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #495057 !important;
+}
+
+.profile-btn::after {
+  margin-left: 6px;
+  color: #495057;
+}
+
+.profile-menu {
+  min-width: 160px;
+  border: none;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+}

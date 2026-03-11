@@ -1,0 +1,71 @@
+import { Request, Response } from "express";
+import {
+	createUser,
+	deleteUser,
+	getUserById,
+	listUsers,
+	updateUser,
+	updateUserPassword,
+} from "../../services/Usermanagement/userService";
+
+export const getUsers = async (_req: Request, res: Response) => {
+	const users = await listUsers();
+	return res.status(200).json({ success: true, data: users });
+};
+
+export const getUser = async (req: Request, res: Response) => {
+	const id = String(req.params.id);
+	const user = await getUserById(id);
+	return res.status(200).json({ success: true, data: user });
+};
+
+export const addUser = async (req: Request, res: Response) => {
+	const user = await createUser(req.body);
+
+	return res.status(201).json({
+		success: true,
+		message: "User created",
+		data: {
+			id: user._id,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			userName: user.userName,
+			desgination: user.desgination,
+			userType: user.userType,
+			phone: user.phone,
+			email: user.email,
+			address: user.address,
+			country: user.country,
+			state: user.state,
+			city: user.city,
+			pincode: user.pincode,
+			permissions: user.permissions,
+			createdAt: user.createdAt,
+		},
+	});
+};
+
+export const editUser = async (req: Request, res: Response) => {
+	const id = String(req.params.id);
+	const user = await updateUser(id, req.body);
+
+	return res.status(200).json({
+		success: true,
+		message: "User updated",
+		data: user,
+	});
+};
+
+export const changePassword = async (req: Request, res: Response) => {
+	const id = String(req.params.id);
+	await updateUserPassword(id, req.body.password);
+
+	return res.status(200).json({ success: true, message: "Password updated" });
+};
+
+export const removeUser = async (req: Request, res: Response) => {
+	const id = String(req.params.id);
+	await deleteUser(id);
+
+	return res.status(200).json({ success: true, message: "User deleted" });
+};

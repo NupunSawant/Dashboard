@@ -1,0 +1,232 @@
+// services/Warehouse/warehouseInwardService.ts
+import mongoose from "mongoose";
+import { WarehouseInward } from "../../models/Warehouses/WarehouseInward";
+import { Counter } from "../../models/Counter";
+
+const ensureObjectId = (id: string, name: string) => {
+	if (!mongoose.Types.ObjectId.isValid(id)) {
+		throw Object.assign(new Error(`Invalid ${name}`), { statusCode: 400 });
+	}
+};
+
+const getNextSequence = async (key: string): Promise<number> => {
+	const doc = await Counter.findOneAndUpdate(
+		{ key },
+		{ $inc: { seq: 1 } },
+		{ new: true, upsert: true },
+	).lean();
+
+	return doc!.seq;
+};
+
+const padGrn = (n: number) => `GRN-${String(n).padStart(5, "0")}`;
+
+export const createWarehouseInward = async (
+	payload: {
+		inwardType: string;
+		inwardDate: Date;
+		receivedBy: string;
+		remarks?: string;
+
+		invoiceNo?: string;
+		supplierName?: string;
+		warehouseName?: string;
+
+		itemsCategory?: string;
+		itemsSubCategory?: string;
+		itemsName?: string;
+		itemsCode?: string;
+		itemsQuantity?: number;
+		itemsUnit?: string;
+		itemsRate?: number;
+		itemsAmount?: number;
+		itemsRemark?: string;
+	},
+	userId?: string,
+) => {
+	const inwardType = payload.inwardType.trim();
+	const receivedBy = payload.receivedBy.trim();
+
+	const remarks = payload.remarks?.trim() || "";
+
+	const invoiceNo = payload.invoiceNo?.trim() || "";
+	const supplierName = payload.supplierName?.trim() || "";
+	const warehouseName = payload.warehouseName?.trim() || "";
+
+	const itemsCategory = payload.itemsCategory?.trim() || "";
+	const itemsSubCategory = payload.itemsSubCategory?.trim() || "";
+	const itemsName = payload.itemsName?.trim() || "";
+	const itemsCode = payload.itemsCode?.trim() || "";
+	const itemsUnit = payload.itemsUnit?.trim() || "";
+	const itemsRemark = payload.itemsRemark?.trim() || "";
+
+	const itemsQuantity = payload.itemsQuantity ?? 0;
+	const itemsRate = payload.itemsRate ?? 0;
+	const itemsAmount = payload.itemsAmount ?? 0;
+
+	const srNo = await getNextSequence("warehouseinward_srno");
+	const grnSeq = await getNextSequence("warehouseinward_grn");
+	const grnNo = padGrn(grnSeq);
+
+	const exists = await WarehouseInward.findOne({ grnNo }).lean();
+	if (exists) {
+		throw Object.assign(new Error("GRN already exists"), {
+			statusCode: 409,
+		});
+	}
+
+	const inward = await WarehouseInward.create({
+		srNo,
+		grnNo,
+		inwardType,
+		inwardDate: payload.inwardDate,
+		receivedBy,
+		remarks,
+
+		invoiceNo,
+		supplierName,
+		warehouseName,
+
+		itemsCategory,
+		itemsSubCategory,
+		itemsName,
+		itemsCode,
+		itemsQuantity,
+		itemsUnit,
+		itemsRate,
+		itemsAmount,
+		itemsRemark,
+
+		createdBy: userId ? new mongoose.Types.ObjectId(userId) : undefined,
+		updatedBy: userId ? new mongoose.Types.ObjectId(userId) : undefined,
+	});
+
+	return inward;
+};
+
+export const listWarehouseInwards = async () => {
+	return WarehouseInward.find()
+		.sort({ srNo: 1 })
+		.populate("createdBy", "firstName lastName userName email phone")
+		.populate("updatedBy", "firstName lastName userName email phone")
+		.lean();
+};
+
+export const getWarehouseInwardById = async (id: string) => {
+	ensureObjectId(id, "warehouse inward id");
+
+	const inward = await WarehouseInward.findById(id)
+		.populate("createdBy", "firstName lastName userName email phone")
+		.populate("updatedBy", "firstName lastName userName email phone")
+		.lean();
+
+	if (!inward)
+		throw Object.assign(new Error("Warehouse inward not found"), {
+			statusCode: 404,
+		});
+
+	return inward;
+};
+
+export const updateWarehouseInward = async (
+	id: string,
+	payload: {
+		inwardType?: string;
+		inwardDate?: Date;
+		receivedBy?: string;
+		remarks?: string;
+
+		invoiceNo?: string;
+		supplierName?: string;
+		warehouseName?: string;
+
+		itemsCategory?: string;
+		itemsSubCategory?: string;
+		itemsName?: string;
+		itemsCode?: string;
+		itemsQuantity?: number;
+		itemsUnit?: string;
+		itemsRate?: number;
+		itemsAmount?: number;
+		itemsRemark?: string;
+	},
+	userId?: string,
+) => {
+	ensureObjectId(id, "warehouse inward id");
+
+	const updated = await WarehouseInward.findByIdAndUpdate(
+		id,
+		{
+			...(payload.inwardType !== undefined
+				? { inwardType: payload.inwardType.trim() }
+				: {}),
+			...(payload.inwardDate !== undefined
+				? { inwardDate: payload.inwardDate }
+				: {}),
+			...(payload.receivedBy !== undefined
+				? { receivedBy: payload.receivedBy.trim() }
+				: {}),
+			...(payload.remarks !== undefined ? { remarks: payload.remarks.trim() } : {}),
+
+			...(payload.invoiceNo !== undefined
+				? { invoiceNo: payload.invoiceNo.trim() }
+				: {}),
+			...(payload.supplierName !== undefined
+				? { supplierName: payload.supplierName.trim() }
+				: {}),
+			...(payload.warehouseName !== undefined
+				? { warehouseName: payload.warehouseName.trim() }
+				: {}),
+
+			...(payload.itemsCategory !== undefined
+				? { itemsCategory: payload.itemsCategory.trim() }
+				: {}),
+			...(payload.itemsSubCategory !== undefined
+				? { itemsSubCategory: payload.itemsSubCategory.trim() }
+				: {}),
+			...(payload.itemsName !== undefined
+				? { itemsName: payload.itemsName.trim() }
+				: {}),
+			...(payload.itemsCode !== undefined
+				? { itemsCode: payload.itemsCode.trim() }
+				: {}),
+			...(payload.itemsQuantity !== undefined
+				? { itemsQuantity: payload.itemsQuantity }
+				: {}),
+			...(payload.itemsUnit !== undefined
+				? { itemsUnit: payload.itemsUnit.trim() }
+				: {}),
+			...(payload.itemsRate !== undefined ? { itemsRate: payload.itemsRate } : {}),
+			...(payload.itemsAmount !== undefined
+				? { itemsAmount: payload.itemsAmount }
+				: {}),
+			...(payload.itemsRemark !== undefined
+				? { itemsRemark: payload.itemsRemark.trim() }
+				: {}),
+
+			...(userId ? { updatedBy: new mongoose.Types.ObjectId(userId) } : {}),
+		},
+		{ new: true },
+	)
+		.populate("createdBy", "firstName lastName userName email phone")
+		.populate("updatedBy", "firstName lastName userName email phone");
+
+	if (!updated)
+		throw Object.assign(new Error("Warehouse inward not found"), {
+			statusCode: 404,
+		});
+
+	return updated;
+};
+
+export const deleteWarehouseInward = async (id: string) => {
+	ensureObjectId(id, "warehouse inward id");
+
+	const deleted = await WarehouseInward.findByIdAndDelete(id);
+	if (!deleted)
+		throw Object.assign(new Error("Warehouse inward not found"), {
+			statusCode: 404,
+		});
+
+	return true;
+};

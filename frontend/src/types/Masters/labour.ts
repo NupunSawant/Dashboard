@@ -1,0 +1,20 @@
+export type Labour = {
+	id?: string;
+	_id?: string;
+	labourName: string;
+    contactNumber: string;
+    panNumber: string;
+    panDocument: string;
+    aadharNumber: string;
+    aadharDocument: string;
+    address: string;
+    state: string;
+    city: string;
+    country: string;
+    pincode: string;
+    remark: string;
+	createdAt?: string;
+	createdBy?: { id: string; name: string } | null;
+	updatedAt?: string;
+	updatedBy?: { id: string; name: string } | null;
+};

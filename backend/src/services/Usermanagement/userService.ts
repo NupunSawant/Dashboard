@@ -1,0 +1,205 @@
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import { User } from "../../models/User";
+
+const ensureObjectId = (id: string, name: string) => {
+	if (!mongoose.Types.ObjectId.isValid(id)) {
+		throw Object.assign(new Error(`Invalid ${name}`), { statusCode: 400 });
+	}
+};
+
+export const listUsers = async () => {
+	return User.find()
+		.select(
+			"firstName lastName userName desgination userType phone email address country state city pincode permissions createdAt",
+		)
+		.sort({ createdAt: -1 })
+		.lean();
+};
+
+export const getUserById = async (id: string) => {
+	ensureObjectId(id, "user id");
+
+	const user = await User.findById(id)
+		.select(
+			"firstName lastName userName desgination userType phone email address country state city pincode permissions createdAt",
+		)
+		.lean();
+
+	if (!user)
+		throw Object.assign(new Error("User not found"), { statusCode: 404 });
+	return user;
+};
+
+export const createUser = async (payload: {
+	firstName: string;
+	lastName: string;
+	userName: string;
+	desgination: string;
+	userType: string;
+	phone: string;
+	email: string;
+	address: string;
+	country: string;
+	state: string;
+	city: string;
+	pincode: string;
+	password: string;
+	permissions?: any;
+}) => {
+	const email = payload.email.trim().toLowerCase();
+	const phone = payload.phone.trim();
+	const userName = payload.userName.trim();
+
+	const exists = await User.findOne({
+		$or: [{ email }, { phone }, { userName }],
+	}).lean();
+	if (exists)
+		throw Object.assign(new Error("Email/Phone/Username already exists"), {
+			statusCode: 409,
+		});
+
+	const passwordHash = await bcrypt.hash(payload.password, 10);
+
+	const user = await User.create({
+		firstName: payload.firstName.trim(),
+		lastName: payload.lastName.trim(),
+		userName,
+		desgination: payload.desgination.trim(),
+		userType: payload.userType.trim(),
+		phone,
+		email,
+		address: payload.address.trim(),
+		country: payload.country.trim(),
+		state: payload.state.trim(),
+		city: payload.city.trim(),
+		pincode: payload.pincode.trim(),
+		passwordHash,
+		...(payload.permissions !== undefined
+			? { permissions: payload.permissions }
+			: {}),
+	});
+
+	return user;
+};
+
+export const updateUser = async (
+	id: string,
+	payload: {
+		firstName?: string;
+		lastName?: string;
+		userName?: string;
+		desgination?: string;
+		userType?: string;
+		phone?: string;
+		email?: string;
+		address?: string;
+		country?: string;
+		state?: string;
+		city?: string;
+		pincode?: string;
+		permissions?: any;
+	},
+) => {
+	ensureObjectId(id, "user id");
+
+	if (payload.email) {
+		const email = payload.email.trim().toLowerCase();
+		const exists = await User.findOne({ email, _id: { $ne: id } }).lean();
+		if (exists)
+			throw Object.assign(new Error("Email already exists"), {
+				statusCode: 409,
+			});
+	}
+
+	if (payload.phone) {
+		const phone = payload.phone.trim();
+		const exists = await User.findOne({ phone, _id: { $ne: id } }).lean();
+		if (exists)
+			throw Object.assign(new Error("Phone already exists"), {
+				statusCode: 409,
+			});
+	}
+
+	if (payload.userName) {
+		const userName = payload.userName.trim();
+		const exists = await User.findOne({
+			userName,
+			_id: { $ne: id },
+		}).lean();
+		if (exists)
+			throw Object.assign(new Error("Username already exists"), {
+				statusCode: 409,
+			});
+	}
+
+	const updated = await User.findByIdAndUpdate(
+		id,
+		{
+			...(payload.firstName !== undefined
+				? { firstName: payload.firstName.trim() }
+				: {}),
+			...(payload.lastName !== undefined
+				? { lastName: payload.lastName.trim() }
+				: {}),
+			...(payload.userName !== undefined
+				? { userName: payload.userName.trim() }
+				: {}),
+			...(payload.desgination !== undefined
+				? { desgination: payload.desgination.trim() }
+				: {}),
+			...(payload.userType !== undefined
+				? { userType: payload.userType.trim() }
+				: {}),
+			...(payload.phone !== undefined ? { phone: payload.phone.trim() } : {}),
+			...(payload.email !== undefined
+				? { email: payload.email.trim().toLowerCase() }
+				: {}),
+			...(payload.address !== undefined
+				? { address: payload.address.trim() }
+				: {}),
+			...(payload.country !== undefined
+				? { country: payload.country.trim() }
+				: {}),
+			...(payload.state !== undefined ? { state: payload.state.trim() } : {}),
+			...(payload.city !== undefined ? { city: payload.city.trim() } : {}),
+			...(payload.pincode !== undefined
+				? { pincode: payload.pincode.trim() }
+				: {}),
+			...(payload.permissions !== undefined
+				? { permissions: payload.permissions }
+				: {}),
+		},
+		{ new: true },
+	).select(
+		"firstName lastName userName desgination userType phone email address country state city pincode permissions createdAt updatedAt",
+	);
+
+	if (!updated)
+		throw Object.assign(new Error("User not found"), { statusCode: 404 });
+	return updated;
+};
+
+export const updateUserPassword = async (id: string, password: string) => {
+	ensureObjectId(id, "user id");
+
+	const passwordHash = await bcrypt.hash(password, 10);
+
+	const updated = await User.findByIdAndUpdate(
+		id,
+		{ passwordHash },
+		{ new: true },
+	).select("_id");
+	if (!updated)
+		throw Object.assign(new Error("User not found"), { statusCode: 404 });
+	return true;
+};
+
+export const deleteUser = async (id: string) => {
+	ensureObjectId(id, "user id");
+
+	const deleted = await User.findByIdAndDelete(id);
+	if (!deleted)
+		throw Object.assign(new Error("User not found"), { statusCode: 404 });
+	return true;
+};

@@ -1,0 +1,243 @@
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "../../slices/store";
+import SimpleBar from "simplebar-react";
+import "simplebar-react/dist/simplebar.min.css";
+import { logoutThunk } from "../../slices/auth/thunks";
+import React from "react";
+
+type Props = {
+	collapsed: boolean;
+	onToggle: () => void;
+};
+
+export default function AppSidebar({ collapsed, onToggle }: Props) {
+	const navigate = useNavigate();
+	const dispatch = useDispatch<AppDispatch>();
+	const location = useLocation();
+	const token = useSelector((s: RootState) => s.auth.token);
+
+	const [hovered, setHovered] = useState<string | null>(null);
+	const [openMaster, setOpenMaster] = useState(true);
+
+	useMemo(() => {
+		if (location.pathname.startsWith("/masters")) setOpenMaster(true);
+	}, [location.pathname]);
+
+	if (!token) return null;
+
+	const isActive = (path: string) => location.pathname.startsWith(path);
+
+	// ── Styles ──────────────────────────────────────────
+	const sidebarStyle: React.CSSProperties = {
+		position: "fixed",
+		top: 0,
+		left: 0,
+		height: "100vh",
+		width: collapsed ? "72px" : "250px",
+		background: "#ffffff",
+		borderRight: "1px solid #e9ebec",
+		transition: "width 0.2s ease",
+		zIndex: 1001,
+		display: "flex",
+		flexDirection: "column",
+		overflow: "hidden",
+		boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
+	};
+
+	const brandBoxStyle: React.CSSProperties = {
+		height: "60px",
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		padding: collapsed ? "0" : "0 20px",
+		borderBottom: "1px solid #e9ebec",
+		flexShrink: 0,
+	};
+
+	const sectionLabelStyle: React.CSSProperties = {
+		fontSize: "11px",
+		fontWeight: 600,
+		textTransform: "uppercase",
+		letterSpacing: "0.08em",
+		color: "#878a99",
+		padding: collapsed ? "14px 0 4px" : "14px 20px 4px",
+		whiteSpace: "nowrap",
+		overflow: "hidden",
+		textAlign: collapsed ? "center" : "left",
+	};
+
+	// ── Main Menu Style with Hover ──
+	const menuLinkStyle = (
+		active: boolean,
+		isHovered: boolean,
+	): React.CSSProperties => ({
+		display: "flex",
+		alignItems: "center",
+		gap: collapsed ? 0 : "10px",
+		justifyContent: collapsed ? "center" : "flex-start",
+		padding: collapsed ? "10px 0" : "8px 16px",
+		color: active || isHovered ? "#000" : "#545a6d",
+		background: active
+			? "#eaf4f2"
+			: isHovered
+			? "#d4f5e9" // soft light green
+			: "transparent",
+		borderRadius: "6px",
+		textDecoration: "none",
+		fontWeight: active ? 600 : 500,
+		fontSize: "14px",
+		cursor: "pointer",
+		transition: "all 0.15s ease",
+		margin: "2px 8px",
+		whiteSpace: "nowrap",
+		border: "none",
+		width: "calc(100% - 16px)",
+	});
+
+	// ── Sub Menu Style with Hover ──
+	const subMenuLinkStyle = (
+		active: boolean,
+		isHovered: boolean,
+	): React.CSSProperties => ({
+		display: "flex",
+		alignItems: "center",
+		gap: "8px",
+		padding: collapsed ? "8px 0" : "7px 16px 7px 36px",
+		justifyContent: collapsed ? "center" : "flex-start",
+		color: active || isHovered ? "#000" : "#545a6d",
+		background: active
+			? "#eaf4f2"
+			: isHovered
+			? "#d4f5e9"
+			: "transparent",
+		borderRadius: "6px",
+		textDecoration: "none",
+		fontWeight: active ? 600 : 400,
+		fontSize: "13px",
+		cursor: "pointer",
+		transition: "all 0.15s ease",
+		margin: "1px 8px",
+		whiteSpace: "nowrap",
+	});
+
+	// ── Menu Items ──
+	const masterItems = [
+		{ to: "/masters/categories", icon: "ri-price-tag-3-line", label: "Category" },
+		{ to: "/masters/sub-categories", icon: "ri-price-tag-line", label: "Sub Category" },
+		{ to: "/masters/units", icon: "ri-ruler-line", label: "Unit" },
+		{ to: "/masters/gsts", icon: "ri-percent-line", label: "GST" },
+		{ to: "/masters/items", icon: "ri-store-2-line", label: "Item" },
+		{ to: "/masters/suppliers", icon: "ri-truck-line", label: "Suppliers" },
+		{ to: "/masters/warehouses", icon: "ri-building-4-line", label: "Warehouse" },
+		{ to: "/masters/labours", icon: "ri-hard-hat-line", label: "Labour" },
+	];
+
+	return (
+		<div style={sidebarStyle}>
+			<div style={brandBoxStyle}>
+				<Link to="/" style={{ textDecoration: "none" }}>
+					<span style={{ color: "#1a8376", fontWeight: 700, fontSize: "20px" }}>
+						{collapsed ? "D" : "Dashboard"}
+					</span>
+				</Link>
+			</div>
+
+			<SimpleBar style={{ flex: 1 }}>
+				<div style={{ padding: "8px 0" }}>
+					{/* Dashboard */}
+					<Link
+						to="/"
+						style={menuLinkStyle(location.pathname === "/", hovered === "/")}
+						onMouseEnter={() => setHovered("/")}
+						onMouseLeave={() => setHovered(null)}
+					>
+						<i className="ri-dashboard-line" style={{ fontSize: "16px" }} />
+						{!collapsed && <span>Dashboard</span>}
+					</Link>
+
+					{/* Users */}
+					{!collapsed && <div style={sectionLabelStyle}>User Management</div>}
+					<Link
+						to="/users"
+						style={menuLinkStyle(isActive("/users"), hovered === "/users")}
+						onMouseEnter={() => setHovered("/users")}
+						onMouseLeave={() => setHovered(null)}
+					>
+						<i className="ri-user-line" style={{ fontSize: "16px" }} />
+						{!collapsed && <span>User Management</span>}
+					</Link>
+
+					{/* Masters */}
+					{!collapsed && <div style={sectionLabelStyle}>Masters</div>}
+					<div
+						onClick={() => setOpenMaster((v) => !v)}
+						style={menuLinkStyle(
+							location.pathname.startsWith("/masters"),
+							hovered === "/masters"
+						)}
+						onMouseEnter={() => setHovered("/masters")}
+						onMouseLeave={() => setHovered(null)}
+					>
+						<i className="ri-layout-grid-line" style={{ fontSize: "16px" }} />
+						{!collapsed && (
+							<>
+								<span style={{ flex: 1 }}>Masters</span>
+								<i className={`ri-arrow-${openMaster ? "up" : "down"}-s-line`} />
+							</>
+						)}
+					</div>
+
+					{openMaster &&
+						masterItems.map((item) => (
+							<Link
+								key={item.to}
+								to={item.to}
+								style={subMenuLinkStyle(
+									isActive(item.to),
+									hovered === item.to
+								)}
+								onMouseEnter={() => setHovered(item.to)}
+								onMouseLeave={() => setHovered(null)}
+							>
+								<i className={item.icon} style={{ fontSize: "14px" }} />
+								{!collapsed && <span>{item.label}</span>}
+							</Link>
+						))}
+
+					{/* Orders */}
+					{!collapsed && <div style={sectionLabelStyle}>Orders</div>}
+					<Link
+						to="/orders"
+						style={menuLinkStyle(isActive("/orders"), hovered === "/orders")}
+						onMouseEnter={() => setHovered("/orders")}
+						onMouseLeave={() => setHovered(null)}
+					>
+						<i className="ri-file-list-3-line" style={{ fontSize: "16px" }} />
+						{!collapsed && <span>Orders</span>}
+					</Link>
+				</div>
+			</SimpleBar>
+
+			{/* Logout */}
+			<div style={{ padding: "10px 0", borderTop: "1px solid #e9ebec" }}>
+				<div
+					onClick={async () => {
+						await dispatch(logoutThunk());
+						navigate("/login");
+					}}
+					style={{
+						...menuLinkStyle(false, hovered === "/logout"),
+						color: "#f06548",
+					}}
+					onMouseEnter={() => setHovered("/logout")}
+					onMouseLeave={() => setHovered(null)}
+				>
+					<i className="ri-logout-box-line" style={{ fontSize: "16px" }} />
+					{!collapsed && <span>Logout</span>}
+				</div>
+			</div>
+		</div>
+	);
+}

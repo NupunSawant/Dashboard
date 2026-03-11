@@ -1,0 +1,1144 @@
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Spinner, Button } from "react-bootstrap";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "../../../slices/store";
+import BasicTable from "../../../components/Table/BasicTable";
+import { createColumnHelper } from "@tanstack/react-table";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { canCreate, canUpdate } from "../../../utils/permission";
+
+import {
+	fetchReadyToDispatchThunk,
+	fetchDispatchesThunk,
+	deliverDispatchThunk,
+	revertReadyDispatchThunk,
+} from "../../../slices/Warehouse/Dispatch/thunks";
+import { changeOrderStatusThunk } from "../../../slices/orders/thunks";
+
+import type {
+	ReadyToDispatchOrder,
+	Dispatch as DispatchType,
+} from "../../../types/Warehouses/dispatch";
+
+import {
+	fetchStockTransfersThunk,
+	revertStockTransferThunk,
+} from "../../../slices/Warehouse/Stocktransfer/thunks";
+import type { StockTransfer } from "../../../types/Warehouses/stocktransfer";
+
+import {
+	fetchIssueToLaboursThunk,
+	revertIssueToLabourThunk,
+} from "../../../slices/Warehouse/IssueToLabour/thunks";
+import type { IssueToLabour } from "../../../types/Warehouses/issueToLabour";
+
+const theme = "#1a8376";
+
+const fmtDateTime = (val: any) => {
+	if (!val) return "-";
+	try {
+		const d = new Date(val);
+		return isNaN(d.getTime()) ? String(val) : d.toLocaleString();
+	} catch {
+		return String(val);
+	}
+};
+
+const orderStatusBadge = (status?: string) => {
+	const s = String(status || "PENDING");
+
+	const map: Record<string, { bg: string; text: string; label: string }> = {
+		PENDING: { bg: "#fff7e6", text: "#ad6800", label: "Pending" },
+		REQUESTED_FOR_DISPATCH: {
+			bg: "#e6f7ff",
+			text: "#096dd9",
+			label: "Requested For Dispatch",
+		},
+		DISPATCHED: { bg: "#f6ffed", text: "#389e0d", label: "Dispatched" },
+		DELIVERED: { bg: "#f0f5ff", text: "#2f54eb", label: "Delivered" },
+		CANCELLED: { bg: "#fff1f0", text: "#cf1322", label: "Cancelled" },
+	};
+
+	const cfg = map[s] || map.PENDING;
+
+	return (
+		<span
+			className='badge'
+			style={{
+				background: cfg.bg,
+				color: cfg.text,
+				border: `1px solid ${cfg.bg}`,
+				fontWeight: 600,
+				padding: "6px 10px",
+				borderRadius: 999,
+			}}
+		>
+			{cfg.label}
+		</span>
+	);
+};
+
+const dispatchStatusBadge = (status?: string) => {
+	const s = String(status || "PENDING");
+
+	const map: Record<string, { bg: string; text: string; label: string }> = {
+		PENDING: { bg: "#fff7e6", text: "#ad6800", label: "Pending" },
+		DELIVERED: { bg: "#f0f5ff", text: "#2f54eb", label: "Delivered" },
+		CREATED: { bg: "#e6f7ff", text: "#096dd9", label: "Created" },
+		DISPATCHED: { bg: "#e6f7ff", text: "#096dd9", label: "Dispatched" },
+		CANCELLED: { bg: "#fff1f0", text: "#cf1322", label: "Cancelled" },
+	};
+
+	const cfg = map[s] || map.PENDING;
+
+	return (
+		<span
+			className='badge'
+			style={{
+				background: cfg.bg,
+				color: cfg.text,
+				border: `1px solid ${cfg.bg}`,
+				fontWeight: 600,
+				padding: "6px 10px",
+				borderRadius: 999,
+			}}
+		>
+			{cfg.label}
+		</span>
+	);
+};
+
+const returnStatusBadge = (status?: string) => {
+	const s = String(status || "NOT_RETURNED").toUpperCase();
+
+	const map: Record<string, { bg: string; text: string; label: string }> = {
+		NOT_RETURNED: {
+			bg: "#f5f5f5",
+			text: "#595959",
+			label: "Not Returned",
+		},
+		PARTIALLY_RETURNED: {
+			bg: "#fff7e6",
+			text: "#ad6800",
+			label: "Partially Returned",
+		},
+		FULLY_RETURNED: {
+			bg: "#f6ffed",
+			text: "#389e0d",
+			label: "Fully Returned",
+		},
+	};
+
+	const cfg = map[s] || map.NOT_RETURNED;
+
+	return (
+		<span
+			className='badge'
+			style={{
+				background: cfg.bg,
+				color: cfg.text,
+				border: `1px solid ${cfg.bg}`,
+				fontWeight: 600,
+				padding: "6px 10px",
+				borderRadius: 999,
+			}}
+		>
+			{cfg.label}
+		</span>
+	);
+};
+
+const labourStatusBadge = (status?: string) => {
+	const s = String(status || "ISSUED").toUpperCase();
+
+	const map: Record<string, { bg: string; text: string; label: string }> = {
+		ISSUED: { bg: "#e6f7ff", text: "#096dd9", label: "Issued" },
+		COMPLETED: { bg: "#f6ffed", text: "#389e0d", label: "Completed" },
+		REVERTED: { bg: "#fff1f0", text: "#cf1322", label: "Reverted" },
+	};
+
+	const cfg = map[s] || map.ISSUED;
+
+	return (
+		<span
+			className='badge'
+			style={{
+				background: cfg.bg,
+				color: cfg.text,
+				border: `1px solid ${cfg.bg}`,
+				fontWeight: 600,
+				padding: "6px 10px",
+				borderRadius: 999,
+			}}
+		>
+			{cfg.label}
+		</span>
+	);
+};
+
+const pickId = (x: any) => String(x?.id || x?._id || "").trim();
+
+type TabKey = "READY" | "DISPATCH" | "STOCK_TRANSFER" | "ISSUE_TO_LABOUR";
+
+export default function DispatchList() {
+	const dispatch = useDispatch<AppDispatch>();
+	const nav = useNavigate();
+
+	const authUser = useSelector((s: RootState) => s.auth.user);
+	const allowCreate = canCreate(authUser, "warehouse", "dispatch");
+	const allowUpdate = canUpdate(authUser, "warehouse", "dispatch");
+
+	const dispatchState =
+		(useSelector((s: RootState) => (s as any).dispatch) as any) ||
+		(useSelector((s: RootState) => (s as any).warehouseDispatch) as any) ||
+		{};
+
+	const {
+		ready = [],
+		dispatches = [],
+		loadingReady = false,
+		loadingList = false,
+		revertingReady = false,
+		error = null,
+	} = dispatchState || {};
+
+	const [activeTab, setActiveTab] = useState<TabKey>("READY");
+	const [deliveringId, setDeliveringId] = useState<string>("");
+	const [revertingId, setRevertingId] = useState<string>("");
+	const [revertingStId, setRevertingStId] = useState<string>("");
+	const [revertingLabourId, setRevertingLabourId] = useState<string>("");
+
+	const { stockTransfers = [], loadingList: stLoading = false } =
+		(useSelector((s: RootState) => (s as any).stockTransfer) as any) || {};
+
+	const { issueToLabours = [], loadingList: labourLoading = false } =
+		(useSelector((s: RootState) => (s as any).issueToLabour) as any) || {};
+
+	useEffect(() => {
+		dispatch(fetchReadyToDispatchThunk());
+		dispatch(fetchDispatchesThunk());
+		dispatch(fetchStockTransfersThunk());
+		dispatch(fetchIssueToLaboursThunk());
+	}, [dispatch]);
+
+	const readyCol = createColumnHelper<ReadyToDispatchOrder>();
+	const listCol = createColumnHelper<DispatchType>();
+
+	const readyColumns = useMemo(
+		() => [
+			readyCol.accessor((_, idx) => idx + 1, {
+				id: "srNo",
+				header: "Sr No",
+				cell: (i) => String(i.getValue() ?? "-"),
+			}),
+			readyCol.accessor("orderNo" as any, {
+				header: "Order No",
+				cell: (i) => i.getValue() || "-",
+			}),
+			readyCol.accessor("quotationNo" as any, {
+				header: "Quotation No",
+				cell: (i) => i.getValue() || "-",
+			}),
+			readyCol.accessor("orderDate" as any, {
+				header: "Date",
+				cell: (i) => fmtDateTime(i.getValue()),
+			}),
+			readyCol.accessor("orderStatus" as any, {
+				header: "Status",
+				cell: (i) => orderStatusBadge(i.getValue()),
+			}),
+			readyCol.accessor("customerName" as any, {
+				header: "Customer Name",
+				cell: (i) => i.getValue() || "-",
+			}),
+			readyCol.accessor("dispatchFromWarehouseName" as any, {
+				header: "Dispatch From Warehouse",
+				cell: (i) => i.getValue() || "-",
+			}),
+			readyCol.accessor(
+				(row) =>
+					(row as any)?.createdBy && (row as any)?.createdAt
+						? `${(row as any).createdBy} - ${fmtDateTime(
+								(row as any).createdAt,
+							)}`
+						: (row as any)?.createdBy || fmtDateTime((row as any)?.createdAt),
+				{
+					id: "createdByDate",
+					header: "Created By / Date",
+					cell: (i) => String(i.getValue() || "-"),
+				},
+			),
+			readyCol.accessor(
+				(row) =>
+					(row as any)?.updatedBy && (row as any)?.updatedAt
+						? `${(row as any).updatedBy} - ${fmtDateTime(
+								(row as any).updatedAt,
+							)}`
+						: (row as any)?.updatedBy || fmtDateTime((row as any)?.updatedAt),
+				{
+					id: "updatedByDate",
+					header: "Updated By / Date",
+					cell: (i) => String(i.getValue() || "-"),
+				},
+			),
+			readyCol.display({
+				id: "actions",
+				header: "Action",
+				cell: ({ row }) => {
+					const o: any = row.original;
+					const rowId = String(pickId(o) || "").trim();
+					const orderId = String(o?.orderId || pickId(o) || "").trim();
+					const quotationId = String(o?.quotationId || "").trim();
+					const status = String(o?.orderStatus || o?.status || "");
+					const isOrderRow = !!orderId;
+					const isQuotationRow = !!quotationId;
+					const canCreateDispatch =
+						status === "REQUESTED_FOR_DISPATCH" || status === "WON";
+					const revertBusy = revertingId === rowId;
+
+					return (
+						<div className='d-flex gap-2 align-items-center'>
+							<Button
+								size='sm'
+								disabled={!isOrderRow}
+								onClick={() => nav(`/orders/${orderId}`)}
+								style={{
+									background: "#eaf4f2",
+									border: "none",
+									color: theme,
+									borderRadius: "6px",
+									padding: "4px 10px",
+								}}
+								title='View Order'
+							>
+								<i className='ri-eye-line' />
+							</Button>
+
+							{allowUpdate && (
+								<Button
+									size='sm'
+									disabled={!rowId || revertBusy || revertingReady}
+									onClick={async () => {
+										try {
+											const ok = window.confirm(
+												"Revert this ready-to-dispatch entry?",
+											);
+											if (!ok) return;
+
+											setRevertingId(rowId);
+
+											if (isQuotationRow) {
+												await dispatch(
+													revertReadyDispatchThunk(rowId),
+												).unwrap();
+												toast.success("Quotation dispatch request reverted");
+											} else {
+												await dispatch(
+													changeOrderStatusThunk({
+														id: orderId,
+														status: "PENDING",
+													}),
+												).unwrap();
+												toast.success("Order reverted to Pending");
+											}
+
+											dispatch(fetchReadyToDispatchThunk());
+											dispatch(fetchDispatchesThunk());
+										} catch (e: any) {
+											toast.error(e || "Failed to revert");
+										} finally {
+											setRevertingId("");
+										}
+									}}
+									style={{
+										background: "#f5f7f9",
+										border: "none",
+										color: "#ad6800",
+										borderRadius: "6px",
+										padding: "4px 10px",
+										display: "inline-flex",
+										alignItems: "center",
+										gap: 6,
+									}}
+									title='Revert'
+								>
+									<i className='ri-arrow-go-back-line' />
+									{revertBusy ? "..." : ""}
+								</Button>
+							)}
+
+							{allowCreate && (
+								<Button
+									size='sm'
+									disabled={
+										!canCreateDispatch || (!isOrderRow && !isQuotationRow)
+									}
+									onClick={() => {
+										if (isOrderRow) {
+											nav(`/warehouses/dispatch/${orderId}/create`);
+											return;
+										}
+
+										nav(
+											`/warehouses/dispatch/new?sourceType=QUOTATION&sourceId=${quotationId}`,
+										);
+									}}
+									style={{
+										background: canCreateDispatch ? theme : "#f5f7f9",
+										border: "none",
+										color: canCreateDispatch ? "white" : "#6c757d",
+										borderRadius: "6px",
+										padding: "4px 10px",
+									}}
+									title='Create Dispatch'
+								>
+									<i className='ri-truck-line' />
+								</Button>
+							)}
+						</div>
+					);
+				},
+			}),
+		],
+		[
+			readyCol,
+			nav,
+			dispatch,
+			revertingId,
+			revertingReady,
+			allowCreate,
+			allowUpdate,
+		],
+	);
+
+	const dispatchColumns = useMemo(
+		() => [
+			listCol.accessor((_, idx) => idx + 1, {
+				id: "srNo",
+				header: "Sr No",
+				cell: (i) => String(i.getValue() ?? "-"),
+			}),
+			listCol.accessor(
+				(row) =>
+					(row as any).dispatchNo ||
+					(row as any).dispatchId ||
+					(row as any).id ||
+					(row as any)._id,
+				{
+					id: "dispatchKey",
+					header: "Dispatch No",
+					cell: (i) => String(i.getValue() ?? "-"),
+				},
+			),
+			listCol.accessor("dispatchDate", {
+				header: "Dispatch Date",
+				cell: (i) => fmtDateTime(i.getValue()),
+			}),
+			listCol.accessor("orderNo", {
+				header: "Order No",
+				cell: (i) => i.getValue() || "-",
+			}),
+			listCol.accessor("quotationNo", {
+				header: "Quotation No",
+				cell: (i) => i.getValue() || "-",
+			}),
+			listCol.accessor("dispatchType", {
+				header: "Dispatch Type",
+				cell: (i) => i.getValue() || "-",
+			}),
+			listCol.accessor("issuedFromWarehouseName", {
+				header: "Issued From Warehouse",
+				cell: (i) => i.getValue() || "-",
+			}),
+			listCol.accessor("customerName", {
+				header: "Customer Name",
+				cell: (i) => i.getValue() || "-",
+			}),
+			listCol.accessor("dispatchStatus", {
+				header: "Dispatch Status",
+				cell: (i) => dispatchStatusBadge(i.getValue()),
+			}),
+			listCol.accessor("returnedItemStatus", {
+				header: "Return Status",
+				cell: (i) => returnStatusBadge(i.getValue()),
+			}),
+			listCol.accessor(
+				(row) =>
+					(row as any)?.createdBy && (row as any)?.createdAt
+						? `${(row as any).createdBy} - ${fmtDateTime(
+								(row as any).createdAt,
+							)}`
+						: (row as any)?.createdBy || fmtDateTime((row as any)?.createdAt),
+				{
+					id: "createdByDate",
+					header: "Created By / Date",
+					cell: (i) => String(i.getValue() || "-"),
+				},
+			),
+			listCol.accessor(
+				(row) =>
+					(row as any)?.updatedBy && (row as any)?.updatedAt
+						? `${(row as any).updatedBy} - ${fmtDateTime(
+								(row as any).updatedAt,
+							)}`
+						: (row as any)?.updatedBy || fmtDateTime((row as any)?.updatedAt),
+				{
+					id: "updatedByDate",
+					header: "Updated By / Date",
+					cell: (i) => String(i.getValue() || "-"),
+				},
+			),
+			listCol.display({
+				id: "actions",
+				header: "Action",
+				cell: ({ row }) => {
+					const d: any = row.original;
+					const currentDispatchId =
+						pickId(d) || String(d?.dispatchId || d?.dispatchNo || "").trim();
+					const status = String(d?.dispatchStatus || "PENDING");
+					const canDeliver = status === "PENDING";
+					const busy = deliveringId === currentDispatchId;
+
+					return (
+						<div className='d-flex gap-2 align-items-center'>
+							<Button
+								size='sm'
+								disabled={!currentDispatchId}
+								onClick={() =>
+									nav(`/warehouses/dispatch/${currentDispatchId}/view`)
+								}
+								style={{
+									background: "#eaf4f2",
+									border: "none",
+									color: theme,
+									borderRadius: "6px",
+									padding: "4px 10px",
+								}}
+								title='View'
+							>
+								<i className='ri-eye-line' />
+							</Button>
+
+							{allowUpdate && (
+								<Button
+									size='sm'
+									disabled={!currentDispatchId || !canDeliver || busy}
+									onClick={async () => {
+										try {
+											const ok = window.confirm(
+												"Mark this dispatch as Delivered?",
+											);
+											if (!ok) return;
+
+											setDeliveringId(currentDispatchId);
+											await dispatch(
+												deliverDispatchThunk(currentDispatchId),
+											).unwrap();
+											toast.success("Dispatch marked Delivered");
+
+											dispatch(fetchDispatchesThunk());
+											dispatch(fetchReadyToDispatchThunk());
+										} catch (e: any) {
+											toast.error(e || "Failed to deliver dispatch");
+										} finally {
+											setDeliveringId("");
+										}
+									}}
+									style={{
+										background: canDeliver ? theme : "#f5f7f9",
+										border: "none",
+										color: canDeliver ? "white" : "#6c757d",
+										borderRadius: "6px",
+										padding: "4px 10px",
+										display: "inline-flex",
+										alignItems: "center",
+										gap: 6,
+									}}
+									title='Deliver'
+								>
+									<i className='ri-check-double-line' />
+									{busy ? "..." : ""}
+								</Button>
+							)}
+
+							{allowUpdate && status === "DELIVERED" && (
+								<Button
+									size='sm'
+									disabled={!currentDispatchId}
+									onClick={() =>
+										nav(
+											`/warehouses/dispatch/${currentDispatchId}/sales-return`,
+										)
+									}
+									style={{
+										background: "#fff7e6",
+										border: "none",
+										color: "#ad6800",
+										borderRadius: "6px",
+										padding: "4px 10px",
+									}}
+									title='Sales Return'
+								>
+									<i className='ri-arrow-go-back-line' />
+								</Button>
+							)}
+						</div>
+					);
+				},
+			}),
+		],
+		[listCol, nav, deliveringId, dispatch, allowUpdate],
+	);
+
+	const stCol = createColumnHelper<StockTransfer>();
+
+	const stColumns = useMemo(
+		() => [
+			stCol.accessor((_, idx) => idx + 1, {
+				id: "srNo",
+				header: "Sr No",
+				cell: (i) => String(i.getValue() ?? "-"),
+			}),
+			stCol.accessor("transferNo", {
+				header: "Transfer No",
+				cell: (i) => i.getValue() || "-",
+			}),
+			stCol.accessor("transferDate", {
+				header: "Transfer Date",
+				cell: (i) => fmtDateTime(i.getValue()),
+			}),
+			stCol.accessor("transferFromWarehouse", {
+				header: "Transfer From",
+				cell: (i) => i.getValue() || "-",
+			}),
+			stCol.accessor("transferToWarehouse", {
+				header: "Transfer To",
+				cell: (i) => i.getValue() || "-",
+			}),
+			stCol.accessor("status", {
+				header: "Dispatch Status",
+				cell: (i) => {
+					const s = String(i.getValue() || "DISPATCHED");
+					const map: Record<
+						string,
+						{ bg: string; text: string; label: string }
+					> = {
+						DISPATCHED: { bg: "#e6f7ff", text: "#096dd9", label: "Dispatched" },
+						COMPLETED: { bg: "#f6ffed", text: "#389e0d", label: "Completed" },
+						REVERTED: { bg: "#fff1f0", text: "#cf1322", label: "Reverted" },
+					};
+					const cfg = map[s] || map.DISPATCHED;
+					return (
+						<span
+							className='badge'
+							style={{
+								background: cfg.bg,
+								color: cfg.text,
+								border: `1px solid ${cfg.bg}`,
+								fontWeight: 600,
+								padding: "6px 10px",
+								borderRadius: 999,
+							}}
+						>
+							{cfg.label}
+						</span>
+					);
+				},
+			}),
+			stCol.accessor(
+				(row) =>
+					(row as any)?.createdBy && (row as any)?.createdAt
+						? `${(row as any).createdBy} - ${fmtDateTime((row as any).createdAt)}`
+						: (row as any)?.createdBy || fmtDateTime((row as any)?.createdAt),
+				{
+					id: "createdByDate",
+					header: "Created By / Date",
+					cell: (i) => String(i.getValue() || "-"),
+				},
+			),
+			stCol.display({
+				id: "actions",
+				header: "Action",
+				cell: ({ row }) => {
+					const o: any = row.original;
+					const id = String(o?.id || o?._id || "").trim();
+					const status = String(o?.status || "DISPATCHED");
+					const canEdit = status === "DISPATCHED";
+					const canRevert = status === "DISPATCHED";
+					const busy = revertingStId === id;
+
+					return (
+						<div className='d-flex gap-2 align-items-center'>
+							<Button
+								size='sm'
+								disabled={!id}
+								onClick={() => nav(`/warehouses/stock-transfer/${id}/view`)}
+								style={{
+									background: "#eaf4f2",
+									border: "none",
+									color: theme,
+									borderRadius: "6px",
+									padding: "4px 10px",
+								}}
+								title='View'
+							>
+								<i className='ri-eye-line' />
+							</Button>
+
+							{allowUpdate && (
+								<Button
+									size='sm'
+									disabled={!id || !canEdit}
+									onClick={() => nav(`/warehouses/stock-transfer/${id}/edit`)}
+									style={{
+										background: canEdit ? "#eaf4f2" : "#f5f7f9",
+										border: "none",
+										color: canEdit ? theme : "#6c757d",
+										borderRadius: "6px",
+										padding: "4px 10px",
+									}}
+									title='Edit'
+								>
+									<i className='ri-pencil-line' />
+								</Button>
+							)}
+
+							{allowUpdate && (
+								<Button
+									size='sm'
+									disabled={!id || !canRevert || busy}
+									onClick={async () => {
+										const ok = window.confirm(
+											"Revert this stock transfer? Inventory will be restored.",
+										);
+										if (!ok) return;
+										setRevertingStId(id);
+										try {
+											await dispatch(revertStockTransferThunk(id)).unwrap();
+											toast.success("Stock transfer reverted");
+											dispatch(fetchStockTransfersThunk());
+										} catch (e: any) {
+											toast.error(e || "Failed to revert");
+										} finally {
+											setRevertingStId("");
+										}
+									}}
+									style={{
+										background: canRevert ? "#fff7e6" : "#f5f7f9",
+										border: "none",
+										color: canRevert ? "#ad6800" : "#6c757d",
+										borderRadius: "6px",
+										padding: "4px 10px",
+										display: "inline-flex",
+										alignItems: "center",
+										gap: 6,
+									}}
+									title='Revert'
+								>
+									<i className='ri-arrow-go-back-line' />
+									{busy ? "..." : ""}
+								</Button>
+							)}
+						</div>
+					);
+				},
+			}),
+		],
+		[stCol, nav, dispatch, revertingStId, allowUpdate],
+	);
+
+	const labourCol = createColumnHelper<IssueToLabour>();
+
+	const labourColumns = useMemo(
+		() => [
+			labourCol.accessor((_, idx) => idx + 1, {
+				id: "srNo",
+				header: "Sr. No.",
+				cell: (i) => String(i.getValue() ?? "-"),
+			}),
+			labourCol.accessor("issueNo", {
+				header: "Dispatch ID",
+				cell: (i) => i.getValue() || "-",
+			}),
+			labourCol.accessor("issueDate", {
+				header: "Issued Date",
+				cell: (i) => fmtDateTime(i.getValue()),
+			}),
+			labourCol.accessor("issueFromWarehouse", {
+				header: "Issued From",
+				cell: (i) => i.getValue() || "-",
+			}),
+			labourCol.accessor("labourName", {
+				header: "Labour Name",
+				cell: (i) => i.getValue() || "-",
+			}),
+			labourCol.accessor("status", {
+				header: "Dispatch Status",
+				cell: (i) => labourStatusBadge(i.getValue()),
+			}),
+			labourCol.accessor("remarks", {
+				header: "Remarks",
+				cell: (i) => i.getValue() || "-",
+			}),
+			labourCol.accessor(
+				(row) =>
+					(row as any)?.createdBy && (row as any)?.createdAt
+						? `${(row as any).createdBy} - ${fmtDateTime(
+								(row as any).createdAt,
+							)}`
+						: (row as any)?.createdBy || fmtDateTime((row as any)?.createdAt),
+				{
+					id: "createdByDate",
+					header: "Created By / Date",
+					cell: (i) => String(i.getValue() || "-"),
+				},
+			),
+			labourCol.accessor(
+				(row) =>
+					(row as any)?.updatedBy && (row as any)?.updatedAt
+						? `${(row as any).updatedBy} - ${fmtDateTime(
+								(row as any).updatedAt,
+							)}`
+						: (row as any)?.updatedBy || fmtDateTime((row as any)?.updatedAt),
+				{
+					id: "updatedByDate",
+					header: "Updated By / Date",
+					cell: (i) => String(i.getValue() || "-"),
+				},
+			),
+			labourCol.display({
+				id: "actions",
+				header: "Actions",
+				cell: ({ row }) => {
+					const d: any = row.original;
+					const id = String(d?.id || d?._id || "").trim();
+					const status = String(d?.status || "ISSUED").toUpperCase();
+					const canEdit = status === "ISSUED";
+					const canRevert = status === "ISSUED";
+					const busy = revertingLabourId === id;
+
+					return (
+						<div className='d-flex gap-2 align-items-center'>
+							<Button
+								size='sm'
+								disabled={!id}
+								onClick={() => nav(`/warehouses/issue-to-labour/${id}/view`)}
+								style={{
+									background: "#eaf4f2",
+									border: "none",
+									color: theme,
+									borderRadius: "6px",
+									padding: "4px 10px",
+								}}
+								title='View'
+							>
+								<i className='ri-eye-line' />
+							</Button>
+
+							{allowUpdate && (
+								<Button
+									size='sm'
+									disabled={!id || !canEdit}
+									onClick={() => nav(`/warehouses/issue-to-labour/${id}/edit`)}
+									style={{
+										background: canEdit ? "#eaf4f2" : "#f5f7f9",
+										border: "none",
+										color: canEdit ? theme : "#6c757d",
+										borderRadius: "6px",
+										padding: "4px 10px",
+									}}
+									title='Edit'
+								>
+									<i className='ri-pencil-line' />
+								</Button>
+							)}
+
+							{allowUpdate && (
+								<Button
+									size='sm'
+									disabled={!id || !canRevert || busy}
+									onClick={async () => {
+										const ok = window.confirm(
+											"Revert this issue to labour? Inventory will be restored.",
+										);
+										if (!ok) return;
+
+										setRevertingLabourId(id);
+
+										try {
+											await dispatch(revertIssueToLabourThunk(id)).unwrap();
+											toast.success("Issue to labour reverted");
+											dispatch(fetchIssueToLaboursThunk());
+										} catch (e: any) {
+											toast.error(e || "Failed to revert");
+										} finally {
+											setRevertingLabourId("");
+										}
+									}}
+									style={{
+										background: canRevert ? "#fff7e6" : "#f5f7f9",
+										border: "none",
+										color: canRevert ? "#ad6800" : "#6c757d",
+										borderRadius: "6px",
+										padding: "4px 10px",
+										display: "inline-flex",
+										alignItems: "center",
+										gap: 6,
+									}}
+									title='Revert'
+								>
+									<i className='ri-arrow-go-back-line' />
+									{busy ? "..." : ""}
+								</Button>
+							)}
+						</div>
+					);
+				},
+			}),
+		],
+		[labourCol, nav, dispatch, revertingLabourId, allowUpdate],
+	);
+
+	return (
+		<>
+			<style>{`
+				.dispatch-tabs {
+					display: flex;
+					gap: 22px;
+					align-items: center;
+					border-bottom: 1px solid #e9ebec;
+					padding: 6px 2px 0 2px;
+					margin-bottom: 14px;
+					flex-wrap: wrap;
+				}
+
+				.dispatch-tab-btn {
+					border: none;
+					background: transparent;
+					padding: 10px 0;
+					font-weight: 700;
+					font-size: 14px;
+					color: #495057;
+					position: relative;
+				}
+
+				.dispatch-tab-btn.active {
+					color: ${theme};
+				}
+
+				.dispatch-tab-btn.active::after {
+					content: "";
+					position: absolute;
+					left: 0;
+					right: 0;
+					bottom: -1px;
+					height: 3px;
+					background: ${theme};
+					border-radius: 6px;
+				}
+			`}</style>
+
+			<div className='d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2'>
+				<h4 className='mb-0 fw-bold' style={{ color: "#111" }}>
+					Dispatch
+				</h4>
+
+				<div className='d-flex gap-2 align-items-center'>
+					<Button
+						variant='light'
+						onClick={() => {
+							if (activeTab === "READY") dispatch(fetchReadyToDispatchThunk());
+							else if (activeTab === "DISPATCH")
+								dispatch(fetchDispatchesThunk());
+							else if (activeTab === "STOCK_TRANSFER")
+								dispatch(fetchStockTransfersThunk());
+							else if (activeTab === "ISSUE_TO_LABOUR")
+								dispatch(fetchIssueToLaboursThunk());
+						}}
+						style={{
+							border: "1px solid #e9ebec",
+							fontSize: "13px",
+							borderRadius: "6px",
+							display: "inline-flex",
+							alignItems: "center",
+							gap: "6px",
+						}}
+					>
+						<i className='ri-refresh-line' /> Refresh
+					</Button>
+
+					<Button
+						variant='light'
+						onClick={() => toast.info("Export not connected yet")}
+						style={{
+							border: "1px solid #e9ebec",
+							fontSize: "13px",
+							borderRadius: "6px",
+							display: "inline-flex",
+							alignItems: "center",
+							gap: "6px",
+						}}
+					>
+						<i className='ri-upload-2-line' /> Export
+					</Button>
+
+					{allowCreate && activeTab === "STOCK_TRANSFER" && (
+						<Button
+							onClick={() => nav("/warehouses/stock-transfer/new")}
+							style={{
+								background: theme,
+								border: "none",
+								borderRadius: "6px",
+								fontSize: "13px",
+								display: "inline-flex",
+								alignItems: "center",
+								gap: "6px",
+							}}
+						>
+							<i className='ri-add-circle-line' /> Create Transfer
+						</Button>
+					)}
+
+					{allowCreate && activeTab === "ISSUE_TO_LABOUR" && (
+						<Button
+							onClick={() => nav("/warehouses/issue-to-labour/new")}
+							style={{
+								background: theme,
+								border: "none",
+								borderRadius: "6px",
+								fontSize: "13px",
+								display: "inline-flex",
+								alignItems: "center",
+								gap: "6px",
+							}}
+						>
+							<i className='ri-add-circle-line' /> Issue To Labour
+						</Button>
+					)}
+				</div>
+			</div>
+
+			<div className='dispatch-tabs'>
+				<button
+					className={`dispatch-tab-btn ${activeTab === "READY" ? "active" : ""}`}
+					onClick={() => setActiveTab("READY")}
+					type='button'
+				>
+					Ready for Dispatch
+				</button>
+
+				<button
+					className={`dispatch-tab-btn ${activeTab === "DISPATCH" ? "active" : ""}`}
+					onClick={() => setActiveTab("DISPATCH")}
+					type='button'
+				>
+					Dispatch
+				</button>
+
+				<button
+					className={`dispatch-tab-btn ${activeTab === "STOCK_TRANSFER" ? "active" : ""}`}
+					onClick={() => setActiveTab("STOCK_TRANSFER")}
+					type='button'
+				>
+					Stock Transfer
+					{stockTransfers.filter((t: any) => t?.status === "DISPATCHED")
+						.length > 0 && (
+						<span
+							style={{
+								marginLeft: 6,
+								background: theme,
+								color: "white",
+								borderRadius: 99,
+								fontSize: 11,
+								padding: "1px 7px",
+								fontWeight: 700,
+							}}
+						>
+							{
+								stockTransfers.filter((t: any) => t?.status === "DISPATCHED")
+									.length
+							}
+						</span>
+					)}
+				</button>
+
+				<button
+					className={`dispatch-tab-btn ${activeTab === "ISSUE_TO_LABOUR" ? "active" : ""}`}
+					onClick={() => setActiveTab("ISSUE_TO_LABOUR")}
+					type='button'
+				>
+					Issue To Labour
+					{issueToLabours.filter((t: any) => t?.status === "ISSUED").length >
+						0 && (
+						<span
+							style={{
+								marginLeft: 6,
+								background: theme,
+								color: "white",
+								borderRadius: 99,
+								fontSize: 11,
+								padding: "1px 7px",
+								fontWeight: 700,
+							}}
+						>
+							{issueToLabours.filter((t: any) => t?.status === "ISSUED").length}
+						</span>
+					)}
+				</button>
+			</div>
+
+			{error && <Alert variant='danger'>{error}</Alert>}
+
+			{activeTab === "READY" ? (
+				loadingReady ? (
+					<div className='d-flex justify-content-center py-5'>
+						<Spinner animation='border' style={{ color: theme }} />
+					</div>
+				) : (
+					<BasicTable
+						data={ready || []}
+						columns={readyColumns}
+						title='Ready For Dispatch'
+					/>
+				)
+			) : activeTab === "DISPATCH" ? (
+				loadingList ? (
+					<div className='d-flex justify-content-center py-5'>
+						<Spinner animation='border' style={{ color: theme }} />
+					</div>
+				) : (
+					<BasicTable
+						data={dispatches || []}
+						columns={dispatchColumns}
+						title='Dispatch List'
+					/>
+				)
+			) : activeTab === "STOCK_TRANSFER" ? (
+				stLoading ? (
+					<div className='d-flex justify-content-center py-5'>
+						<Spinner animation='border' style={{ color: theme }} />
+					</div>
+				) : (
+					<BasicTable
+						data={stockTransfers || []}
+						columns={stColumns}
+						title='Stock Transfer List'
+					/>
+				)
+			) : activeTab === "ISSUE_TO_LABOUR" ? (
+				labourLoading ? (
+					<div className='d-flex justify-content-center py-5'>
+						<Spinner animation='border' style={{ color: theme }} />
+					</div>
+				) : (
+					<BasicTable
+						data={issueToLabours || []}
+						columns={labourColumns}
+						title='Issue To Labour List'
+					/>
+				)
+			) : null}
+		</>
+	);
+}
