@@ -13,14 +13,15 @@ import { registerSchema } from "../../validation/Usermanagement/authValidation";
 const refreshCookieName = "refreshToken";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * ONE_DAY_MS;
 
-const cookieOptions = {
+const getRefreshCookieOptions = (rememberMe = false) => ({
 	httpOnly: true,
 	secure: env.COOKIE_SECURE,
 	sameSite: "lax" as const,
 	path: "/",
-	maxAge: ONE_DAY_MS,
-};
+	maxAge: rememberMe ? SEVEN_DAYS_MS : ONE_DAY_MS,
+});
 
 export const register = async (req: Request, res: Response) => {
 	console.log("REGISTER BODY:", req.body);
@@ -48,9 +49,19 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-	const { user, accessToken, refreshToken } = await loginUser(req.body);
+	const rememberMe = Boolean(req.body?.rememberMe);
 
-	res.cookie(refreshCookieName, refreshToken, cookieOptions);
+	const { user, accessToken, refreshToken } = await loginUser({
+		phoneOrEmail: req.body?.phoneOrEmail,
+		password: req.body?.password,
+		rememberMe,
+	});
+
+	res.cookie(
+		refreshCookieName,
+		refreshToken,
+		getRefreshCookieOptions(rememberMe),
+	);
 
 	return res.json({
 		success: true,
@@ -91,7 +102,12 @@ export const logout = async (req: AuthRequest, res: Response) => {
 	const refreshToken = req.cookies?.[refreshCookieName];
 	await logoutUser(refreshToken);
 
-	res.clearCookie(refreshCookieName, { ...cookieOptions, maxAge: undefined });
+	res.clearCookie(refreshCookieName, {
+		httpOnly: true,
+		secure: env.COOKIE_SECURE,
+		sameSite: "lax",
+		path: "/",
+	});
 
 	return res.status(200).json({
 		success: true,

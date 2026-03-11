@@ -497,7 +497,12 @@ export default function DispatchList() {
 					const currentDispatchId =
 						pickId(d) || String(d?.dispatchId || d?.dispatchNo || "").trim();
 					const status = String(d?.dispatchStatus || "PENDING");
+					const returnStatus = String(
+						d?.returnedItemStatus || "NOT_RETURNED",
+					).toUpperCase();
 					const canDeliver = status === "PENDING";
+					const canReturn =
+						status === "DELIVERED" && returnStatus === "NOT_RETURNED";
 					const busy = deliveringId === currentDispatchId;
 
 					return (
@@ -562,7 +567,7 @@ export default function DispatchList() {
 								</Button>
 							)}
 
-							{allowUpdate && status === "DELIVERED" && (
+							{allowUpdate && canReturn && (
 								<Button
 									size='sm'
 									disabled={!currentDispatchId}

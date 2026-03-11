@@ -44,7 +44,14 @@ export const registerThunk = createAsyncThunk(
 
 export const loginThunk = createAsyncThunk(
 	"auth/login",
-	async (payload: { phoneOrEmail: string; password: string }, thunkAPI) => {
+	async (
+		payload: {
+			phoneOrEmail: string;
+			password: string;
+			rememberMe?: boolean;
+		},
+		thunkAPI,
+	) => {
 		try {
 			const { data } = await api.post(API.AUTH.LOGIN, payload);
 
