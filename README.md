@@ -1,1052 +1,659 @@
-📦 Warehouse & Inventory Management System
+# 📦 Warehouse & Inventory Management System
 
-A Full Stack Warehouse & Inventory Management System designed to manage masters, orders, dispatch, warehouse inward, stock transfers, labour issue management, and inventory tracking with a modular architecture and role-based permissions.
+A full-stack **Warehouse & Inventory Management System** designed to manage masters, orders, dispatch, warehouse inward, stock transfers, labour issue management, and inventory tracking — with a modular architecture and role-based permissions.
 
-The system is built using React, Redux, Node.js, Express, MongoDB, and Bootstrap, providing a structured and scalable solution for warehouse operations.
+> Built using **React**, **Redux**, **Node.js**, **Express**, **MongoDB**, and **Bootstrap**, providing a structured and scalable solution for warehouse operations.
 
-🧾 Project Overview
+---
 
-This project manages the complete lifecycle of warehouse operations, including:
+## 📑 Table of Contents
 
-Item master management
+- [Project Overview](#-project-overview)
+- [System Architecture](#-system-architecture)
+- [Main Modules](#-main-modules)
+- [Masters Module](#-masters-module)
+- [Users & Permissions](#-users--permissions-module)
+- [Orders Module](#-orders-module)
+- [Dispatch Module](#-dispatch-module)
+- [Warehouse Inward Module](#-warehouse-inward-module)
+- [Issue To Labour Module](#-issue-to-labour-module)
+- [Stock Transfer Module](#-stock-transfer-module)
+- [Inventory Module](#-inventory-module)
+- [Dashboard Module](#-dashboard-module)
+- [Complete Workflow](#-complete-project-workflow)
+- [Module-Wise Flow](#-module-wise-working-flow)
+- [Frontend Architecture](#-frontend-architecture)
+- [Backend Architecture](#-backend-architecture)
+- [Database Schema](#-database--collection-schema)
+- [Tech Stack](#-tech-stack)
+- [Authentication](#-authentication)
+- [Installation](#-installation)
+- [Future Improvements](#-future-improvements)
 
-Order creation
+---
 
-Dispatch management
+## 🧾 Project Overview
 
-Warehouse inward operations
+This project manages the **complete lifecycle of warehouse operations**, including:
 
-Labour issue tracking
+| Area | Description |
+|------|-------------|
+| 📋 Item Masters | Base data management for items, categories, units, GST |
+| 🛒 Orders | Customer order creation and approval |
+| 🚚 Dispatch | Sending items from warehouse to customers |
+| 📥 Warehouse Inward | Recording stock received into warehouse |
+| 👷 Labour Issues | Tracking items issued to workers |
+| 🔄 Stock Transfers | Moving stock between warehouses |
+| 📊 Inventory | Real-time availability tracking |
+| 🔐 Permissions | Role-based access per module and action |
 
-Stock transfers between warehouses
+The system ensures that inventory movement is tracked across **all modules**, preventing stock inconsistencies.
 
-Inventory availability tracking
+---
 
-Role-based permissions
+## 🏗 System Architecture
 
-Structured module architecture
-
-The system ensures that inventory movement is tracked across all modules, preventing stock inconsistencies.
-
-🏗 System Architecture
+```mermaid
 flowchart LR
+    A[Frontend\nReact + TypeScript\nRedux + Bootstrap] --> B[React Router]
+    B --> C[Pages / Modules]
+    C --> D[API Service / Thunks]
 
-<img width="2299" height="328" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/de47555c-8787-403b-b29e-857b8e02ab44" />
+    D --> E[Backend\nNode.js + Express]
+    E --> F[Routes]
+    F --> G[Controllers]
+    G --> H[Services /\nBusiness Logic]
+    H --> I[Models]
+    I --> J[(MongoDB)]
 
+    E --> K[JWT Auth\nMiddleware]
+    E --> L[Permission\nMiddleware]
 
-Explanation:
+    J --> M[(Masters Data)]
+    J --> N[(Orders Data)]
+    J --> O[(Warehouse Data)]
+    J --> P[(Inventory Data)]
+    J --> Q[(Users Data)]
+```
 
-Masters define base data
+**How it fits together:**
+- **Frontend** handles UI, routing, tables, forms, and state management via Redux Toolkit
+- **Backend** is organized into routes → controllers → business logic → models
+- **MongoDB** stores all operational data
+- **JWT + Permission middleware** secures access to every module and action
 
-Orders create demand
+---
 
-Dispatch sends items
+## 🧩 Main Modules
 
-Warehouse inward receives stock
+```mermaid
+mindmap
+  root((WMS))
+    Masters
+      Categories
+      Sub Categories
+      Units
+      GST
+      Items
+      Customers
+      Suppliers
+      Warehouses
+      Labours
+    Users & Permissions
+      Role Management
+      Module Access
+      Action Control
+    Orders
+      Create Order
+      Approve Order
+      Ready For Dispatch
+    Warehouse
+      Dispatch
+      Inward
+      Stock Transfer
+      Issue To Labour
+    Inventory
+      In Stock List
+      Stock Summary
+      Warehouse Overview
+    Dashboard
+      Summary Cards
+      Analytics
+      Low Stock Alerts
+```
 
-Labour issues consume stock
+---
 
-Inventory updates quantities
+## 🧱 Masters Module
 
-Stock transfers move stock between warehouses
+Masters store the **base reference data** used across the entire system. All transaction modules depend on masters being set up first.
 
-🧩 Main Modules
-
-The project is divided into the following major modules.
-
-Masters
-Users & Permissions
-Orders
-Warehouse
-Inventory
-Dashboard
-Authentication
-🧱 Masters Module
-
-Masters store the base reference data used across the system.
-
-Sub Modules
-Categories
-
-Organizes items into main categories.
-
-Example:
-
-Electronics
-Hardware
-Tools
-Sub Categories
-
-Further classification of items.
-
-Example:
-
-Electronics
-   ├── Mobile
-   ├── Laptop
-   └── Accessories
-Units
-
-Defines measurement units.
-
-Examples:
-
-Nos
-Kg
-Meters
-Boxes
-GST
-
-Stores GST percentage.
-
-Example:
-
-5%
-12%
-18%
-28%
-Items
-
-Stores item information including:
-
-Item Name
-
-Item Code
-
-Category
-
-Sub Category
-
-Unit
-
-GST
-
-Customers
-
-Stores customer details:
-
-Customer Name
-Contact Person
-Phone
-Address
-City
-State
-Pincode
-Suppliers
-
-Stores supplier information.
-
-Warehouses
-
-Stores warehouse locations.
-
-Example:
-
-Main Warehouse
-Factory Warehouse
-Retail Warehouse
-Labours
-
-Stores labour/worker details for job assignments.
-
-👤 Users & Permissions Module
-
-The system includes role-based access control.
-
-Permissions include:
-
-Create
-View
-Update
-Delete
-
-Example permissions structure:
-
-Masters
-Orders
-Warehouse
-Inventory
-Users
-Dashboard
-
-Each user gets permissions per module.
-
-🧾 Orders Module
-
-Handles customer order creation.
-
-Flow
-Create Order
-      ↓
-Order Approved
-      ↓
-Ready For Dispatch
-
-Orders include:
-
-Customer
-Items
-Quantity
-Price
-GST
-Total Amount
-🚚 Dispatch Module
-
-Dispatch sends items from warehouse to customers.
-
-Dispatch Types
-ORDER
-DIRECT
-LABOUR
-
-Dispatch contains:
-
-Dispatch Number
-Order Reference
-Customer
-Warehouse
-Items
-Dispatch Date
-Transport Details
-Dispatch Flow
+```mermaid
 flowchart TD
+    A[Masters Setup] --> B[Categories]
+    A --> C[Sub Categories]
+    A --> D[Units]
+    A --> E[GST Slabs]
+    A --> F[Items]
+    A --> G[Customers]
+    A --> H[Suppliers]
+    A --> I[Warehouses]
+    A --> J[Labours]
 
-A[Order Ready] --> B[Create Dispatch]
-B --> C[Items Sent From Warehouse]
-C --> D[Dispatch Status Updated]
-📥 Warehouse Inward Module
+    B --> F
+    C --> F
+    D --> F
+    E --> F
 
-Warehouse inward records stock received into warehouse.
+    F --> K[Orders / Dispatch /\nInward / Inventory]
+    G --> K
+    H --> K
+    I --> K
+    J --> K
+```
 
-Types
-GRN (Goods Receipt Note)
-Stock Transfer Inward
-Return Inward
-Inward Flow
+### Sub-modules
+
+| Sub Module | Purpose | Example |
+|------------|---------|---------|
+| **Categories** | Main item classification | Electronics, Hardware, Tools |
+| **Sub Categories** | Child classification | Electronics → Mobile, Laptop |
+| **Units** | Measurement units | Nos, Kg, Meters, Boxes |
+| **GST** | Tax slabs | 5%, 12%, 18%, 28% |
+| **Items** | Core inventory items | Name, Code, Category, Unit, GST |
+| **Customers** | Customer details | Name, Phone, Address, City |
+| **Suppliers** | Supplier information | Name, Contact, Address |
+| **Warehouses** | Storage locations | Main, Factory, Retail |
+| **Labours** | Worker details | Name, Assignment info |
+
+---
+
+## 👤 Users & Permissions Module
+
+The system includes **role-based access control** with granular per-module permissions.
+
+```mermaid
 flowchart TD
+    A[User Account] --> B{Assign Permissions}
+    B --> C[Masters Module]
+    B --> D[Orders Module]
+    B --> E[Warehouse Module]
+    B --> F[Inventory Module]
+    B --> G[Users Module]
+    B --> H[Dashboard Module]
 
-A[Stock Received] --> B[Create Inward Entry]
-B --> C[Validate Quantities]
-C --> D[Update Inventory]
-👷 Issue To Labour Module
+    C --> I[Create / View /\nUpdate / Delete]
+    D --> I
+    E --> I
+    F --> I
+    G --> I
+    H --> I
+```
 
-Tracks items issued to workers.
+**Permission types:** `Create` · `View` · `Update` · `Delete`
 
-Example:
+Each user is assigned permissions **per module per action**, enabling fine-grained enterprise-level access control.
 
-Labour Name
-Item
-Quantity
-Issue Date
-Return Status
-Labour Flow
+---
+
+## 🧾 Orders Module
+
+Handles customer order creation and status tracking.
+
+```mermaid
+flowchart LR
+    A[Create Order] --> B{Order Review}
+    B -->|Approved| C[Order Approved]
+    B -->|Rejected| D[Order Rejected]
+    C --> E[Ready For Dispatch]
+    E --> F[Dispatch Created]
+```
+
+**Order includes:** Customer · Items · Quantity · Price · GST · Total Amount · Status History
+
+---
+
+## 🚚 Dispatch Module
+
+Dispatch sends items **from warehouse to customers** or routes them internally.
+
+```mermaid
 flowchart TD
+    A[Order Ready For Dispatch] --> B[Create Dispatch]
+    B --> C{Dispatch Type}
 
-A[Dispatch] --> B[Issue To Labour]
-B --> C[Labour Uses Item]
-C --> D[Return Or Consume]
-D --> E[Inventory Update]
-🔄 Stock Transfer Module
+    C -->|ORDER| D[Customer Delivery]
+    C -->|DIRECT| E[Direct Dispatch]
+    C -->|LABOUR| F[Issue To Labour]
 
-Transfers stock between warehouses.
+    D --> G[Items Sent\nFrom Warehouse]
+    E --> G
+    F --> G
 
-Example:
+    G --> H[Dispatch Status Updated]
+    H --> I[Inventory Reserved /\nReduced]
+```
 
-From Warehouse → To Warehouse
-Transfer Flow
+**Dispatch contains:** Dispatch No · Order Reference · Customer · Warehouse · Items · Date · Transport Details
+
+---
+
+## 📥 Warehouse Inward Module
+
+Warehouse inward records **stock received** into a warehouse, increasing inventory.
+
+```mermaid
 flowchart TD
+    A[Stock Received] --> B{Inward Type}
 
-A[Warehouse A] --> B[Create Stock Transfer]
-B --> C[Dispatch Transfer]
-C --> D[Warehouse B Inward]
-D --> E[Inventory Updated]
-📊 Inventory Module
+    B -->|GRN| C[Goods Receipt Note]
+    B -->|Transfer| D[Stock Transfer Inward]
+    B -->|Return| E[Return Inward]
 
-Inventory tracks real-time item quantities.
+    C --> F[Create Inward Entry]
+    D --> F
+    E --> F
 
-It maintains:
+    F --> G[Validate Quantities\n& Item Details]
+    G --> H[Save Inward Record]
+    H --> I[Update Inventory\nReceived Quantity ↑]
+```
 
-Received Quantity
-Reserved Quantity
-Available Quantity
+---
 
-Formula:
+## 👷 Issue To Labour Module
 
-Available = Received - Reserved
+Tracks items **issued to workers** for use on jobs.
 
-Inventory updates automatically when:
+```mermaid
+flowchart TD
+    A[Dispatch Created\nType: LABOUR] --> B[Issue To Labour Entry]
+    B --> C[Assign Labour + Items\n+ Quantity + Date]
+    C --> D[Labour Receives Items]
+    D --> E{Outcome}
 
-Dispatch occurs
-Warehouse inward happens
-Labour issues happen
-Stock transfers occur
-📊 Dashboard Module
+    E -->|Item Used| F[Mark As Consumed]
+    E -->|Item Returned| G[Return Entry]
 
-Dashboard provides summary analytics.
+    F --> H[Inventory Adjusted]
+    G --> H
+```
 
-Example widgets:
+**Issue record includes:** Labour Name · Item · Quantity · Issue Date · Return Status
 
-Total Orders
-Total Dispatches
-Inventory Stock Overview
-Pending Dispatch
-Pending Inwards
-Low Stock Items
+---
 
-Example dashboard layout:
+## 🔄 Stock Transfer Module
 
-Orders Summary
-Dispatch Summary
-Warehouse Activity
-Inventory Statistics
-🖥 Frontend Architecture
-src
- ├── components
- │    ├── Table
- │    ├── Forms
- │    ├── Layout
- │
- ├── pages
- │    ├── Authentication
- │    ├── Dashboard
- │    ├── Masters
- │    ├── Orders
- │    ├── Warehouse
- │    ├── Inventory
- │
- ├── slices
- │    ├── auth
- │    ├── orders
- │    ├── inventory
- │    ├── warehouse
- │
- ├── routes
- ├── utils
- └── types
-⚙ Backend Architecture
-backend
- ├── controllers
- ├── models
- ├── routes
- ├── services
- ├── middlewares
- ├── utils
- └── config
-🔧 Tech Stack
+Transfers stock **between warehouses**, maintaining per-warehouse inventory accuracy.
 
-Frontend
+```mermaid
+flowchart LR
+    A[Source Warehouse\nHas Stock] --> B[Create Stock Transfer]
+    B --> C[Dispatch Transfer\nOut of Source]
+    C --> D[In Transit]
+    D --> E[Destination Warehouse\nReceives Inward]
+    E --> F[Inventory Updated\nBoth Warehouses]
 
-React
-Redux Toolkit
-TypeScript
-Bootstrap
-TanStack Table
-Formik
-Yup
-React Router
+    style A fill:#4A90D9,color:#fff
+    style F fill:#27AE60,color:#fff
+```
 
-Backend
+**Transfer flow:** Source stock is moved out → destination receives inward → both warehouse inventories update accordingly.
 
-Node.js
-Express.js
-MongoDB
-Mongoose
-JWT Authentication
+---
 
-Tools
+## 📊 Inventory Module
 
-Postman
-Git
-GitHub
-VS Code
-🔐 Authentication
+Inventory tracks **real-time item quantities** per warehouse using a simple, reliable formula.
 
-Authentication uses JWT tokens.
+```mermaid
+flowchart TD
+    A[Warehouse Inward] -->|Increases Stock| D[Inventory Engine]
+    B[Dispatch] -->|Reserves / Reduces Stock| D
+    C[Issue To Labour] -->|Reduces Stock| D
+    E[Stock Transfer] -->|Adjusts Per Warehouse| D
 
-Flow:
+    D --> F[Received Qty]
+    D --> G[Reserved Qty]
+    D --> H[Available Qty]
 
-Login
- ↓
-JWT Generated
- ↓
-Token Stored In Frontend
- ↓
-Authenticated Requests
-📸 Screenshots
-Dashboard
+    F --> I["Available = Received − Reserved"]
+    G --> I
+    H --> I
 
-Orders
+    style I fill:#F39C12,color:#fff
+```
 
-Dispatch
+| Quantity Type | Meaning |
+|---------------|---------|
+| **Received Quantity** | Total stock received via inward |
+| **Reserved Quantity** | Stock reserved by dispatches / issues |
+| **Available Quantity** | `Received − Reserved` — what can be used |
 
-Warehouse Inward
+---
 
-Inventory Overview
+## 📊 Dashboard Module
 
-🚀 Installation
-Clone Repository
+Provides **summary analytics** across all modules at a glance.
+
+| Widget | Description |
+|--------|-------------|
+| 📦 Total Orders | Count of all orders |
+| 🚚 Total Dispatches | Count of all dispatches |
+| 📊 Inventory Overview | Stock levels by warehouse |
+| ⏳ Pending Dispatches | Orders awaiting dispatch |
+| 📥 Pending Inwards | Stock awaiting inward entry |
+| ⚠️ Low Stock Items | Items below threshold |
+
+---
+
+## 🔄 Complete Project Workflow
+
+```mermaid
+flowchart TD
+    A[Masters Setup\nCategories · Items · Warehouses · etc] --> B[Customer Places Order]
+    B --> C[Order Review & Approval]
+    C --> D[Ready For Dispatch]
+
+    D --> E[Create Dispatch]
+    E --> F{Dispatch Route}
+
+    F -->|Customer Order| G[Customer Delivery\nOrder Completed]
+    F -->|Labour| H[Issue To Labour]
+    F -->|Transfer| I[Stock Transfer Dispatch]
+
+    H --> J[Labour Uses or\nReturns Item]
+    I --> K[Destination Warehouse\nInward Entry]
+    G --> L[Inventory Updated]
+    J --> L
+    K --> L
+
+    M[Direct GRN / Supplier\nWarehouse Inward] --> L
+
+    L --> N[Live Stock Overview]
+    N --> O[Dashboard Summary\n& Analytics]
+
+    style A fill:#3498DB,color:#fff
+    style L fill:#27AE60,color:#fff
+    style O fill:#8E44AD,color:#fff
+```
+
+---
+
+## 🔁 Module-Wise Working Flow
+
+### 1. Masters → Transactions Flow
+
+```mermaid
+flowchart LR
+    A[Create Categories] --> B[Create SubCategories]
+    B --> C[Create Units & GST]
+    C --> D[Create Items]
+    D --> E[Create Customers\nSuppliers\nWarehouses\nLabours]
+    E --> F[Transactions\nCan Begin]
+
+    style F fill:#27AE60,color:#fff
+```
+
+### 2. Order → Dispatch Flow
+
+```mermaid
+flowchart LR
+    A[Customer Order Created] --> B[Order Saved with\nItems & Pricing]
+    B --> C[Order Approved]
+    C --> D[Status: Ready]
+    D --> E[Dispatch Created\nFrom Order]
+    E --> F[Items Moved\nFrom Warehouse]
+    F --> G[Dispatch Status\nUpdated]
+```
+
+### 3. Dispatch → Labour Flow
+
+```mermaid
+flowchart LR
+    A[Dispatch: Type LABOUR] --> B[Issue To Labour\nEntry Created]
+    B --> C[Labour Receives\nItem Quantity]
+    C --> D{Item Outcome}
+    D -->|Consumed| E[Mark Consumed]
+    D -->|Returned| F[Return Entry]
+    E --> G[Inventory Adjusted]
+    F --> G
+```
+
+### 4. Stock Transfer Flow
+
+```mermaid
+flowchart LR
+    A[Source Warehouse] --> B[Create Transfer Record]
+    B --> C[Transfer Dispatched\nOut of Source]
+    C --> D[In Transit]
+    D --> E[Destination Inward\nEntry Created]
+    E --> F[Both Inventories\nUpdated]
+
+    style A fill:#E74C3C,color:#fff
+    style F fill:#27AE60,color:#fff
+```
+
+### 5. Warehouse Inward Flow
+
+```mermaid
+flowchart LR
+    A[Goods Arrive\nat Warehouse] --> B[Create Inward Entry]
+    B --> C[Select Type:\nGRN / Transfer / Return]
+    C --> D[Validate Item\nDetails & Qty]
+    D --> E[Save Inward]
+    E --> F[Inventory\nReceived Qty ↑]
+```
+
+### 6. Inventory Update Flow
+
+```mermaid
+flowchart TD
+    A[Inward Entry] -->|+Received Qty| E[Inventory Engine]
+    B[Dispatch] -->|+Reserved Qty| E
+    C[Labour Issue] -->|Adjusts Qty| E
+    D[Stock Transfer] -->|Warehouse-wise Adjust| E
+
+    E --> F["Available = Received − Reserved"]
+    F --> G[Live Stock Position\nPer Item Per Warehouse]
+
+    style F fill:#F39C12,color:#fff
+    style G fill:#27AE60,color:#fff
+```
+
+---
+
+## 🖥 Frontend Architecture
+
+```
+src/
+ ├── components/
+ │    ├── Table/
+ │    ├── Forms/
+ │    └── Layout/
+ ├── pages/
+ │    ├── Authentication/
+ │    ├── Dashboard/
+ │    ├── Masters/
+ │    ├── Orders/
+ │    ├── Warehouse/
+ │    └── Inventory/
+ ├── slices/
+ │    ├── auth/
+ │    ├── orders/
+ │    ├── inventory/
+ │    └── warehouse/
+ ├── routes/
+ ├── utils/
+ └── types/
+```
+
+---
+
+## ⚙ Backend Architecture
+
+```
+backend/
+ ├── controllers/
+ ├── models/
+ ├── routes/
+ ├── services/
+ ├── middlewares/
+ ├── utils/
+ └── config/
+```
+
+---
+
+## 🗂 Database / Collection Schema
+
+```mermaid
+erDiagram
+    USERS ||--o{ ORDERS : creates
+    USERS ||--o{ DISPATCHES : manages
+    USERS ||--o{ WAREHOUSE_INWARDS : creates
+    USERS ||--o{ STOCK_TRANSFERS : creates
+    USERS ||--o{ ISSUE_TO_LABOURS : creates
+
+    CUSTOMERS ||--o{ ORDERS : places
+    ORDERS ||--o{ DISPATCHES : generates
+
+    WAREHOUSES ||--o{ DISPATCHES : source
+    WAREHOUSES ||--o{ WAREHOUSE_INWARDS : receives
+    WAREHOUSES ||--o{ STOCK_TRANSFERS : from_to
+    WAREHOUSES ||--o{ INVENTORIES : stores
+
+    LABOURS ||--o{ ISSUE_TO_LABOURS : receives
+
+    CATEGORIES ||--o{ SUBCATEGORIES : contains
+    SUBCATEGORIES ||--o{ ITEMS : classifies
+    UNITS ||--o{ ITEMS : measures
+    GSTS ||--o{ ITEMS : applies
+
+    ITEMS ||--o{ ORDER_ITEMS : included_in
+    ITEMS ||--o{ DISPATCH_ITEMS : dispatched_in
+    ITEMS ||--o{ INWARD_ITEMS : inwarded_in
+    ITEMS ||--o{ TRANSFER_ITEMS : transferred_in
+    ITEMS ||--o{ LABOUR_ISSUE_ITEMS : issued_in
+    ITEMS ||--o{ INVENTORIES : tracked_in
+```
+
+---
+
+## 🔧 Tech Stack
+
+### Frontend
+
+| Technology | Purpose |
+|------------|---------|
+| React | UI Framework |
+| Redux Toolkit | State Management & Async Thunks |
+| TypeScript | Type Safety |
+| Bootstrap | Styling & Layout |
+| TanStack Table | Advanced Data Tables |
+| Formik + Yup | Forms & Validation |
+| React Router | Client-Side Routing |
+
+### Backend
+
+| Technology | Purpose |
+|------------|---------|
+| Node.js | Runtime |
+| Express.js | Web Framework |
+| MongoDB | Database |
+| Mongoose | ODM / Schema Management |
+| JWT | Authentication |
+
+### Tools
+
+Git · GitHub · Postman · VS Code
+
+---
+
+## 🔐 Authentication
+
+```mermaid
+flowchart LR
+    A[User Enters\nCredentials] --> B[POST /auth/login]
+    B --> C{Credentials\nValid?}
+    C -->|Yes| D[JWT Token Generated]
+    C -->|No| E[401 Unauthorized]
+    D --> F[Token Stored\nIn Frontend]
+    F --> G[All Requests Include\nAuthorization Header]
+    G --> H[JWT Middleware\nVerifies Token]
+    H --> I[Permission Middleware\nChecks Module Access]
+    I --> J[Request Proceeds]
+```
+
+---
+
+## 📸 Screenshots
+
+| Module | Screenshot |
+|--------|-----------|
+| Dashboard | ![Dashboard](docs/images/dashboard.png) |
+| Orders | ![Orders](docs/images/orders-list.png) |
+| Dispatch | ![Dispatch](docs/images/dispatch-list.png) |
+| Warehouse Inward | ![Inward](docs/images/warehouse-inward.png) |
+| Stock Transfer | ![Transfer](docs/images/stock-transfer.png) |
+| Issue To Labour | ![Labour](docs/images/issue-to-labour.png) |
+| Inventory | ![Inventory](docs/images/inventory-overview.png) |
+
+---
+
+## 🚀 Installation
+
+### 1. Clone Repository
+
+```bash
 git clone https://github.com/yourusername/warehouse-management-system.git
-Backend Setup
+cd warehouse-management-system
+```
+
+### 2. Backend Setup
+
+```bash
 cd backend
 npm install
 npm run dev
-Frontend Setup
+```
+
+### 3. Frontend Setup
+
+```bash
 cd frontend
 npm install
 npm run dev
-🌱 Future Improvements
+```
 
-Planned features:
+---
 
-Barcode scanning
-PDF invoice generation
-Advanced analytics dashboard
-Email notifications
-Mobile responsive UI
-Multi warehouse analytics
+## 🌱 Future Improvements
 
-🏛 System Architecture Diagram
-flowchart LR
+- [ ] Barcode scanning integration
+- [ ] PDF invoice generation
+- [ ] Advanced analytics dashboard
+- [ ] Email notifications
+- [ ] Mobile responsive UI
+- [ ] Multi-warehouse analytics
 
-A[Frontend - React + TypeScript + Redux + Bootstrap] --> B[React Router]
-B --> C[Pages / Modules]
-C --> D[API Service / Thunks]
+---
 
-D --> E[Backend - Node.js + Express]
-E --> F[Routes]
-F --> G[Controllers]
-G --> H[Services / Business Logic]
-H --> I[Models]
-I --> J[(MongoDB)]
+## 🌟 Why This Project Stands Out
 
-E --> K[JWT Authentication Middleware]
-E --> L[Permission Middleware]
+This is not just a CRUD application. It demonstrates:
 
-J --> M[Masters Data]
-J --> N[Orders Data]
-J --> O[Warehouse Data]
-J --> P[Inventory Data]
-J --> Q[Users Data]
-Explanation
+- ✅ **Modular full-stack architecture** — clean separation of concerns across all layers
+- ✅ **Real business process handling** — mirrors actual warehouse operations
+- ✅ **Interconnected module dependencies** — modules work together, not in isolation
+- ✅ **Role-based permissions** — enterprise-grade access control
+- ✅ **Reusable components** — shared table and form structures throughout
+- ✅ **Live inventory calculations** — accurate, formula-driven stock tracking
+- ✅ **Scalable design** — built to extend into ERP-level systems
 
-This project follows a modular full-stack architecture:
+**Ideal portfolio project for:** Full Stack Developer · MERN Stack Developer · ERP/Inventory Software · Warehouse & Operations Tech
 
-Frontend handles UI, routing, tables, forms, and state management.
+---
 
-Redux Toolkit manages async API calls and global state.
-
-Backend is organized into routes, controllers, business logic, and models.
-
-MongoDB stores all operational data.
-
-JWT + Permission middleware secures access to modules and actions.
-
-This structure makes the project:
-
-scalable
-
-maintainable
-
-easy to extend
-
-suitable for role-based enterprise workflows
-
-🗂 Database / Collection Schema Overview
-erDiagram
-
-USERS ||--o{ ORDERS : creates
-USERS ||--o{ DISPATCHES : manages
-USERS ||--o{ WAREHOUSE_INWARDS : creates
-USERS ||--o{ STOCK_TRANSFERS : creates
-USERS ||--o{ ISSUE_TO_LABOURS : creates
-
-CUSTOMERS ||--o{ ORDERS : places
-ORDERS ||--o{ DISPATCHES : generates
-
-WAREHOUSES ||--o{ DISPATCHES : source
-WAREHOUSES ||--o{ WAREHOUSE_INWARDS : receives
-WAREHOUSES ||--o{ STOCK_TRANSFERS : from_to
-WAREHOUSES ||--o{ INVENTORIES : stores
-
-LABOURS ||--o{ ISSUE_TO_LABOURS : receives
-
-CATEGORIES ||--o{ SUBCATEGORIES : contains
-SUBCATEGORIES ||--o{ ITEMS : classifies
-UNITS ||--o{ ITEMS : measures
-GSTS ||--o{ ITEMS : applies
-
-ITEMS ||--o{ ORDER_ITEMS : included_in
-ITEMS ||--o{ DISPATCH_ITEMS : dispatched_in
-ITEMS ||--o{ INWARD_ITEMS : inwarded_in
-ITEMS ||--o{ TRANSFER_ITEMS : transferred_in
-ITEMS ||--o{ LABOUR_ISSUE_ITEMS : issued_in
-ITEMS ||--o{ INVENTORIES : tracked_in
-🧠 Data Model Explanation
-1. Users
-
-Stores login and access information.
-
-Purpose:
-
-Authentication
-
-Role-based access
-
-Tracking createdBy / updatedBy
-
-2. Masters Collections
-
-These collections are base references used across the entire system.
-
-Categories
-
-Main classification of items.
-
-SubCategories
-
-Child classification under categories.
-
-Units
-
-Measurement units like Nos, Kg, Box, Meter.
-
-GSTs
-
-Tax slabs for items.
-
-Items
-
-Core inventory items linked to category, subcategory, unit, and GST.
-
-Customers
-
-Used in order and dispatch modules.
-
-Suppliers
-
-Used for procurement / future inward processes.
-
-Warehouses
-
-Storage locations for physical stock.
-
-Labours
-
-Workers to whom material can be issued.
-
-3. Orders
-
-Stores customer order data.
-
-Includes:
-
-orderNo
-
-customer details
-
-items
-
-quantities
-
-pricing
-
-totals
-
-order status
-
-Orders are the starting point for dispatch-based sales flow.
-
-4. Dispatches
-
-Stores item movement out of warehouse.
-
-Includes:
-
-dispatchNo
-
-dispatchDate
-
-dispatchType
-
-order linkage
-
-warehouse source
-
-customer details
-
-items
-
-transporter / delivery info
-
-status
-
-Dispatch reduces or reserves stock depending on workflow.
-
-5. Warehouse Inwards
-
-Stores stock received into warehouse.
-
-Includes:
-
-inwardNo
-
-inwardType
-
-reference document
-
-warehouse details
-
-item list
-
-quantities
-
-date
-
-remarks
-
-Warehouse inward increases inventory.
-
-6. Stock Transfers
-
-Moves stock from one warehouse to another.
-
-Flow:
-
-create transfer from source warehouse
-
-dispatch transfer
-
-inward at destination warehouse
-
-inventory updated for both ends
-
-7. Issue To Labour
-
-Tracks item issuance to workers.
-
-Includes:
-
-labour name
-
-linked dispatch/reference
-
-warehouse
-
-item list
-
-issued quantity
-
-consumed / return status
-
-This is important for tracing non-customer stock movement.
-
-8. Inventory
-
-Stores stock summary per item per warehouse.
-
-Tracks:
-
-receivedQuantity
-
-reservedQuantity
-
-availableQuantity
-
-This module acts as the live stock position of the business.
-
-🔄 Complete Project Workflow Diagram
-flowchart TD
-
-A[Masters Setup] --> A1[Categories]
-A --> A2[SubCategories]
-A --> A3[Units]
-A --> A4[GST]
-A --> A5[Items]
-A --> A6[Customers]
-A --> A7[Suppliers]
-A --> A8[Warehouses]
-A --> A9[Labours]
-
-A9 --> B[Order Created]
-B --> C[Order Review / Approval]
-C --> D[Ready For Dispatch]
-
-D --> E[Create Dispatch]
-E --> F[Dispatch From Warehouse]
-
-F --> G1[Customer Delivery]
-F --> G2[Issue To Labour]
-F --> G3[Stock Transfer Dispatch]
-
-G2 --> H1[Labour Uses / Returns Item]
-G3 --> H2[Destination Warehouse Inward]
-G1 --> H3[Order Completed]
-
-H2 --> I[Inventory Updated]
-H1 --> I
-H3 --> I
-
-J[Direct Warehouse Inward / GRN] --> I
-
-I --> K[Stock Overview]
-K --> L[Dashboard Summary]
-🔁 Module-Wise Working Flow
-1. Masters Flow
-
-Masters are created first because all transaction modules depend on them.
-
-Sequence:
-
-create categories
-
-create subcategories
-
-create units
-
-create GST slabs
-
-create items
-
-create customers / suppliers / warehouses / labours
-
-Without masters, transaction modules cannot function properly.
-
-2. Order to Dispatch Flow
-flowchart LR
-A[Customer Order] --> B[Order Saved]
-B --> C[Order Ready]
-C --> D[Dispatch Created]
-D --> E[Items Moved From Warehouse]
-E --> F[Dispatch Status Updated]
-Working
-
-User creates an order
-
-Order contains customer and item details
-
-Once ready, dispatch is generated from the order
-
-Dispatch copies item and customer details
-
-Dispatch updates stock movement process
-
-3. Dispatch to Labour Flow
-flowchart LR
-A[Dispatch Page] --> B[Issue To Labour Created]
-B --> C[Labour Receives Items]
-C --> D[Item Used / Returned]
-D --> E[Inventory Adjusted]
-Working
-
-User creates labour issue from dispatch
-
-Labour receives item quantity
-
-Item may be consumed or later returned
-
-Inventory reflects actual movement
-
-4. Stock Transfer Flow
-flowchart LR
-A[Source Warehouse] --> B[Create Stock Transfer]
-B --> C[Transfer Dispatch]
-C --> D[Destination Warehouse]
-D --> E[Warehouse Inward]
-E --> F[Inventory Updated]
-Working
-
-Stock is transferred between two warehouses
-
-Source stock is moved out
-
-Destination warehouse receives inward
-
-Inventory records remain warehouse-specific
-
-5. Warehouse Inward Flow
-flowchart LR
-A[Goods Received] --> B[Create Inward Entry]
-B --> C[Validate Item Details]
-C --> D[Save Inward]
-D --> E[Update Inventory]
-Working
-
-Stock received is recorded in inward entry
-
-Item quantities are validated
-
-Inventory received quantity increases
-
-6. Inventory Flow
-flowchart TD
-A[Inward] --> D[Inventory Engine]
-B[Dispatch] --> D
-C[Issue To Labour] --> D
-E[Stock Transfer] --> D
-D --> F[Received Qty]
-D --> G[Reserved Qty]
-D --> H[Available Qty]
-Inventory Formula
-Available Quantity = Received Quantity - Reserved Quantity
-Notes
-
-Inward increases stock
-
-Dispatch and issue-related flows affect usable stock
-
-Transfer impacts stock warehouse-wise
-
-Inventory acts as the final stock truth
-
-🧩 Module → Submodule → Sub-Submodule Structure
-1. Authentication
-
-Login
-
-Register
-
-Logout
-
-Protected Routes
-
-Access Denied
-
-2. Dashboard
-
-Summary Cards
-
-Inventory Snapshot
-
-Pending Operations
-
-Module Statistics
-
-Warehouse Overview
-
-Low Stock Indicators
-
-3. Masters
-
-Categories
-
-SubCategories
-
-Units
-
-GST
-
-Items
-
-Customers
-
-Suppliers
-
-Warehouses
-
-Labours
-
-Common actions in all masters
-
-List
-
-Add
-
-Edit
-
-View
-
-Delete
-
-Permission checks
-
-4. Users & Permissions
-
-User List
-
-User Create
-
-User Edit
-
-Password Update
-
-Role / Permission Assignment
-
-Module access control
-
-Action-level permission control
-
-5. Orders
-
-Orders List
-
-Order Create
-
-Order Edit
-
-Order View
-
-Ready To Dispatch stage
-
-Status update flow
-
-Order sub-sections
-
-customer details
-
-item details
-
-quantity / rate
-
-tax / totals
-
-status history
-
-6. Warehouse
-Dispatch
-
-Ready To Dispatch List
-
-Dispatch List
-
-Create Dispatch
-
-Edit Dispatch
-
-View Dispatch
-
-Deliver Dispatch
-
-Revert Dispatch
-
-Warehouse Inward
-
-Inward List
-
-GRN Inward
-
-Pending Transfer Inward
-
-Inward View
-
-Inward Create
-
-Inward Complete Flow
-
-Stock Transfer
-
-Transfer List
-
-Create Transfer
-
-Dispatch Transfer
-
-Pending Transfer
-
-Complete Transfer
-
-Revert Transfer
-
-Issue To Labour
-
-Labour Issue List
-
-Create Labour Issue
-
-View Labour Issue
-
-Edit Labour Issue
-
-Pending Labour Inward / return handling
-
-7. Inventory
-
-In Stock List
-
-Item Stock View
-
-Warehouse Overview
-
-Stock Summary
-
-Received / Reserved / Available quantity display
-
-📸 Suggested GitHub Image Sections
-
-You said you want images too. In GitHub README, use screenshots like this:
-
-# 📸 Application Screens
-
-## Login Page
-![Login Page](docs/images/login-page.png)
-
-## Dashboard
-![Dashboard](docs/images/dashboard.png)
-
-## Orders Module
-![Orders](docs/images/orders-list.png)
-
-## Dispatch Module
-![Dispatch](docs/images/dispatch-list.png)
-
-## Warehouse Inward
-![Warehouse Inward](docs/images/warehouse-inward.png)
-
-## Stock Transfer
-![Stock Transfer](docs/images/stock-transfer.png)
-
-## Issue To Labour
-![Issue To Labour](docs/images/issue-to-labour.png)
-
-## Inventory Overview
-![Inventory](docs/images/inventory-overview.png)
-🖼 Suggested Diagram Images To Add
-
-Create a folder:
-
-docs/
- ├── images/
- ├── diagrams/
-
-Recommended files:
-
-docs/images/dashboard.png
-docs/images/login-page.png
-docs/images/orders-list.png
-docs/images/dispatch-list.png
-docs/images/warehouse-inward.png
-docs/images/stock-transfer.png
-docs/images/issue-to-labour.png
-docs/images/inventory-overview.png
-
-docs/diagrams/system-architecture.png
-docs/diagrams/module-flow.png
-docs/diagrams/database-schema.png
-🌟 Why This Project Is Strong
-
-This project is not just CRUD. It demonstrates:
-
-modular full-stack architecture
-
-real business process handling
-
-warehouse and stock movement logic
-
-interconnected module dependencies
-
-role-based permissions
-
-reusable table and form structure
-
-real inventory calculations
-
-scalable enterprise-style design
-
-This makes it a strong portfolio project for:
-
-Full Stack Developer roles
-
-MERN Stack Developer roles
-
-ERP / Inventory software projects
-
-Warehouse / Operations tech solutions
+<p align="center">Built with ❤️ using the MERN Stack</p>
