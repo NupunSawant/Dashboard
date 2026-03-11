@@ -20,6 +20,7 @@
     "bootstrap": "^5.3.8",
     "country-state-city": "^3.2.1",
     "formik": "^2.4.9",
+    "framer-motion": "^12.35.2",
     "react": "^19.2.0",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.0",
