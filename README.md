@@ -31,14 +31,8 @@ The system ensures that inventory movement is tracked across all modules, preven
 🏗 System Architecture
 flowchart LR
 
-A[Masters] --> B[Orders]
-B --> C[Dispatch]
-C --> D[Warehouse Inward]
-C --> E[Issue To Labour]
-D --> F[Inventory Update]
-E --> F
-F --> G[Stock Transfer]
-G --> D
+<img width="2299" height="328" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/de47555c-8787-403b-b29e-857b8e02ab44" />
+
 
 Explanation:
 
