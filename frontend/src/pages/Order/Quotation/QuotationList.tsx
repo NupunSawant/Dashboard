@@ -588,9 +588,6 @@ export default function QuotationList() {
 				</div>
 			) : activeTab === "REQUESTS" ? (
 				<>
-					<div style={{ fontSize: 12, color: "#6c757d", marginBottom: 8 }}>
-						RFQ rows in redux: {quotationRequests.length}
-					</div>
 
 					<BasicTable
 						columns={requestColumns}

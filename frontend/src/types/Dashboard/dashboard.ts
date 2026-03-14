@@ -100,3 +100,48 @@ export interface DashboardResponse {
 		quotationTrend: Array<{ _id: string; count: number }>;
 	};
 }
+
+export interface DashboardInventoryTableRow {
+	id: string;
+	srNo: number;
+	itemName: string;
+	warehouseName: string;
+	category: string;
+	subCategory: string;
+	unit: string;
+	receivedQuantity: number;
+	reservedQuantity: number;
+	availableQuantity: number;
+	createdAt?: string | null;
+	updatedAt?: string | null;
+}
+
+export interface DashboardInventoryTableFilters {
+	warehouseName?: string;
+	category?: string;
+	search?: string;
+	page?: number;
+	limit?: number;
+	sortBy?: string;
+	sortOrder?: "asc" | "desc";
+}
+
+export interface DashboardInventoryTableResponse {
+	rows: DashboardInventoryTableRow[];
+	pagination: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+	};
+	meta: {
+		categories: string[];
+		appliedFilters: {
+			warehouseName: string;
+			category: string;
+			search: string;
+			sortBy: string;
+			sortOrder: "asc" | "desc";
+		};
+	};
+}

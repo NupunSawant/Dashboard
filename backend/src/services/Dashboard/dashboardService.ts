@@ -172,7 +172,7 @@ const getKPISummary = async (filters: DashboardFilters) => {
 		buildDateMatch("dispatchDate", filters),
 		"issuedFromWarehouseName",
 		filters.warehouseName,
-	);
+	);	
 
 	const inwardBase = buildDateMatch("inwardDate", filters);
 	const inwardMatch: MongoQuery = filters.warehouseName

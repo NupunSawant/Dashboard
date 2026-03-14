@@ -163,4 +163,6 @@ export const API = {
 		COMPLETE: (id: string) => `/warehouses/issue-to-labour/${id}/complete`,
 		PENDING: "/warehouses/issue-to-labour/pending",
 	},
+	DASHBOARD: "/dashboard",
+	DASHBOARD_INVENTORY_TABLE: "/dashboard/inventory-table",
 };
