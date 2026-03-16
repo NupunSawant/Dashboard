@@ -14,7 +14,10 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { canCreate, canUpdate } from "../../utils/permission";
-
+import Menu from "@mui/material/Menu";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import MenuItem from "@mui/material/MenuItem";
 const theme = "#1a8376";
 
 const fmtDateTime = (val: any) => {
@@ -125,71 +128,126 @@ export default function OrdersList() {
 					const canRequestDispatch = allowUpdate && status === "PENDING";
 					const canEdit = allowUpdate && status === "PENDING";
 
+					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+					const open = Boolean(anchorEl);
+					const menuItemStyle = {
+						fontSize: "14px",
+						borderRadius: "6px",
+						display: "flex",
+						alignItems: "center",
+						gap: "10px",
+						padding: "8px 12px",
+						minHeight: "36px",
+						fontWeight: 500,
+
+						"& i": {
+							fontSize: "18px",
+							width: "18px",
+							textAlign: "center",
+						},
+
+						"&:hover": {
+							background: "#f5f7f9",
+						},
+
+						"&.Mui-disabled": {
+							opacity: 0.5,
+						},
+					};
+
 					return (
-						<div className='d-flex gap-2 align-items-center'>
-							{allowUpdate && (
-								<Button
-									size='sm'
-									disabled={!orderId || !canRequestDispatch || changingStatus}
-									onClick={async () => {
-										try {
-											await dispatch(
-												changeOrderStatusThunk({
-													id: orderId,
-													status: "REQUESTED_FOR_DISPATCH",
-												}),
-											).unwrap();
-
-											toast.success("Order sent to Ready To Dispatch");
-										} catch (e: any) {
-											toast.error(e || "Failed to request dispatch");
-										}
-									}}
-									style={{
-										background: canRequestDispatch ? theme : "#e9ebec",
-										border: "none",
-										color: canRequestDispatch ? "white" : "#6c757d",
-										borderRadius: "6px",
-										padding: "4px 10px",
-										fontSize: "12px",
-									}}
-								>
-									<i className='ri-send-plane-2-line' /> Request Dispatch
-								</Button>
-							)}
-
-							{allowUpdate && (
-								<Button
-									size='sm'
-									disabled={!orderId || !canEdit}
-									onClick={() => nav(`/orders/${orderId}/edit`)}
-									style={{
-										background: "#eaf4f2",
-										border: "none",
-										color: theme,
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-								>
-									<i className='ri-pencil-line' />
-								</Button>
-							)}
-
-							<Button
-								size='sm'
-								disabled={!orderId}
-								onClick={() => nav(`/orders/${orderId}`)}
-								style={{
-									background: "white",
-									border: "1px solid #e9ebec",
-									color: "#495057",
-									borderRadius: "6px",
-									padding: "4px 10px",
+						<>
+							<IconButton
+								size='small'
+								onClick={(e) => setAnchorEl(e.currentTarget)}
+								sx={{
+									color: theme,
+									background: "#edf6f5",
+									borderRadius: "8px",
+									width: 32,
+									height: 32,
+									transition: "all .15s ease",
+									"&:hover": {
+										background: "#dff1ef",
+									},
 								}}
 							>
-								<i className='ri-eye-line' />
-							</Button>
-						</div>
+								<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
+							</IconButton>
+
+							<Menu
+								anchorEl={anchorEl}
+								open={open}
+								disableScrollLock
+								onClose={() => setAnchorEl(null)}
+								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+								transformOrigin={{ vertical: "top", horizontal: "right" }}
+								PaperProps={{
+									sx: {
+										borderRadius: "10px",
+										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+										minWidth: 200,
+										padding: "4px",
+										border: "1px solid #f1f1f1",
+									},
+								}}
+							>
+								{allowUpdate && (
+									<MenuItem
+										sx={{
+											...menuItemStyle,
+											color: canRequestDispatch ? "white" : "#6c757d",
+										}}
+										disabled={!orderId || !canRequestDispatch || changingStatus}
+										onClick={async () => {
+											try {
+												await dispatch(
+													changeOrderStatusThunk({
+														id: orderId,
+														status: "REQUESTED_FOR_DISPATCH",
+													}),
+												).unwrap();
+
+												toast.success("Order sent to Ready To Dispatch");
+											} catch (e: any) {
+												toast.error(e || "Failed to request dispatch");
+											}
+										}}
+									>
+										<i className='ri-send-plane-2-line' /> Request Dispatch
+									</MenuItem>
+								)}
+								<Divider variant='middle' component='li' flexItem={true} />
+
+								{allowUpdate && (
+									<MenuItem
+										sx={{
+											...menuItemStyle,
+											color: theme,
+										}}
+										disabled={!orderId || !canEdit}
+										onClick={() => nav(`/orders/${orderId}/edit`)}
+									>
+										<i className='ri-pencil-line' />
+										Edit
+									</MenuItem>
+								)}
+								<Divider variant='middle' component='li' flexItem={true} />
+
+								<MenuItem
+									sx={{
+										...menuItemStyle,
+										color: theme,
+									}}
+									disabled={!orderId}
+									onClick={() => nav(`/orders/${orderId}`)}
+								>
+									<i className='ri-eye-line' />
+									View
+								</MenuItem>
+							</Menu>
+						</>
 					);
 				},
 			}),

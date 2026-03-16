@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Spinner, Button, Modal, Form, Row, Col } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import { createColumnHelper } from "@tanstack/react-table";
 import { toast } from "react-toastify";
 
@@ -30,6 +32,8 @@ import type {
 	WarehouseWiseReorderLevel,
 } from "../../../types/Inventory/reorderLevel";
 import { canCreate, canUpdate } from "../../../utils/permission";
+import IconButton from "@mui/material/IconButton";
+import Divider from "@mui/material/Divider";
 
 const theme = "#1a8376";
 
@@ -684,43 +688,96 @@ export default function ReorderLevelPage() {
 					const rowId = String(original?.id || "");
 					const busy = deletingId === rowId;
 
-					return (
-						<div className='d-flex gap-2 align-items-center'>
-							{allowUpdate && (
-								<Button
-									size='sm'
-									onClick={() => openEditItemWise(original)}
-									style={{
-										background: "#eaf4f2",
-										border: "none",
-										color: theme,
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title='Edit'
-								>
-									<i className='ri-pencil-line' />
-								</Button>
-							)}
+					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-							{allowUpdate && (
-								<Button
-									size='sm'
-									disabled={busy}
-									onClick={() => handleDeleteItemWise(original)}
-									style={{
-										background: "#fff1f0",
-										border: "none",
-										color: "#cf1322",
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title='Delete'
-								>
-									<i className='ri-delete-bin-line' />
-								</Button>
-							)}
-						</div>
+					const open = Boolean(anchorEl);
+					const menuItemStyle = {
+						fontSize: "14px",
+						borderRadius: "6px",
+						display: "flex",
+						alignItems: "center",
+						gap: "10px",
+						padding: "8px 12px",
+						minHeight: "36px",
+						fontWeight: 500,
+
+						"& i": {
+							fontSize: "18px",
+							width: "18px",
+							textAlign: "center",
+						},
+
+						"&:hover": {
+							background: "#f5f7f9",
+						},
+
+						"&.Mui-disabled": {
+							opacity: 0.5,
+						},
+					};
+
+					return (
+						<>
+							<IconButton
+								size='small'
+								onClick={(e) => setAnchorEl(e.currentTarget)}
+								sx={{
+									color: theme,
+									background: "#edf6f5",
+									borderRadius: "8px",
+									width: 32,
+									height: 32,
+									transition: "all .15s ease",
+									"&:hover": {
+										background: "#dff1ef",
+									},
+								}}
+							>
+								<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
+							</IconButton>
+
+							<Menu
+								anchorEl={anchorEl}
+								open={open}
+								disableScrollLock
+								onClose={() => setAnchorEl(null)}
+								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+								transformOrigin={{ vertical: "top", horizontal: "right" }}
+								PaperProps={{
+									sx: {
+										borderRadius: "10px",
+										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+										minWidth: 200,
+										padding: "4px",
+										border: "1px solid #f1f1f1",
+									},
+								}}
+							>
+								{allowUpdate && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: theme }}
+										onClick={() => openEditItemWise(original)}
+										title='Edit'
+									>
+										<i className='ri-pencil-line' />
+										Edit
+									</MenuItem>
+								)}
+								<Divider variant='middle' component='li' flexItem={true} />
+
+								{allowUpdate && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: "#cf1322" }}
+										disabled={busy}
+										onClick={() => handleDeleteItemWise(original)}
+										title='Delete'
+									>
+										<i className='ri-delete-bin-line' />
+										Delete
+									</MenuItem>
+								)}
+							</Menu>
+						</>
 					);
 				},
 			}),
@@ -805,43 +862,96 @@ export default function ReorderLevelPage() {
 					const rowId = String(original?.id || "");
 					const busy = deletingId === rowId;
 
-					return (
-						<div className='d-flex gap-2 align-items-center'>
-							{allowUpdate && (
-								<Button
-									size='sm'
-									onClick={() => openEditWarehouseWise(original)}
-									style={{
-										background: "#eaf4f2",
-										border: "none",
-										color: theme,
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title='Edit'
-								>
-									<i className='ri-pencil-line' />
-								</Button>
-							)}
+					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-							{allowUpdate && (
-								<Button
-									size='sm'
-									disabled={busy}
-									onClick={() => handleDeleteWarehouseWise(original)}
-									style={{
-										background: "#fff1f0",
-										border: "none",
-										color: "#cf1322",
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title='Delete'
-								>
-									<i className='ri-delete-bin-line' />
-								</Button>
-							)}
-						</div>
+					const open = Boolean(anchorEl);
+					const menuItemStyle = {
+						fontSize: "14px",
+						borderRadius: "6px",
+						display: "flex",
+						alignItems: "center",
+						gap: "10px",
+						padding: "8px 12px",
+						minHeight: "36px",
+						fontWeight: 500,
+
+						"& i": {
+							fontSize: "18px",
+							width: "18px",
+							textAlign: "center",
+						},
+
+						"&:hover": {
+							background: "#f5f7f9",
+						},
+
+						"&.Mui-disabled": {
+							opacity: 0.5,
+						},
+					};
+
+					return (
+						<>
+							<IconButton
+								size='small'
+								onClick={(e) => setAnchorEl(e.currentTarget)}
+								sx={{
+									color: theme,
+									background: "#edf6f5",
+									borderRadius: "8px",
+									width: 32,
+									height: 32,
+									transition: "all .15s ease",
+									"&:hover": {
+										background: "#dff1ef",
+									},
+								}}
+							>
+								<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
+							</IconButton>
+
+							<Menu
+								anchorEl={anchorEl}
+								open={open}
+								disableScrollLock
+								onClose={() => setAnchorEl(null)}
+								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+								transformOrigin={{ vertical: "top", horizontal: "right" }}
+								PaperProps={{
+									sx: {
+										borderRadius: "10px",
+										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+										minWidth: 200,
+										padding: "4px",
+										border: "1px solid #f1f1f1",
+									},
+								}}
+							>
+								{allowUpdate && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: theme }}
+										onClick={() => openEditWarehouseWise(original)}
+										title='Edit'
+									>
+										<i className='ri-pencil-line' />
+										Edit
+									</MenuItem>
+								)}
+
+								<Divider variant='middle' component='li' flexItem={true} />
+								{allowUpdate && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: "#cf1322" }}
+										disabled={busy}
+										onClick={() => handleDeleteWarehouseWise(original)}
+										title='Delete'
+									>
+										<i className='ri-delete-bin-line' />
+										Delete
+									</MenuItem>
+								)}
+							</Menu>
+						</>
 					);
 				},
 			}),

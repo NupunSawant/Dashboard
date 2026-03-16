@@ -128,6 +128,17 @@ const typeBadge = (type?: string) => {
 const pickId = (x: any) =>
 	String(x?.id || x?._id || x?.dispatchId || x?.dispatchNo || "").trim();
 
+const pickName = (val: any): string => {
+	if (!val) return "";
+	if (typeof val === "object") {
+		return (
+			`${val.firstName || ""} ${val.lastName || ""}`.trim() ||
+			String(val._id || val)
+		);
+	}
+	return String(val);
+};
+
 export default function InventoryDispatchList() {
 	const dispatch = useDispatch<AppDispatch>();
 	const nav = useNavigate();
@@ -165,7 +176,7 @@ export default function InventoryDispatchList() {
 
 	const columns = useMemo(
 		() => [
-			col.accessor(( _,idx) => idx + 1, {
+			col.accessor((_, idx) => idx + 1, {
 				id: "srNo",
 				header: "Sr No",
 				cell: (i) => <span style={{ fontWeight: 600 }}>{i.getValue()}</span>,
@@ -215,13 +226,12 @@ export default function InventoryDispatchList() {
 				cell: (i) => dispatchStatusBadge(i.getValue()),
 			}),
 			col.accessor(
-				(row) =>
-					(row as any)?.createdBy && (row as any)?.createdAt
-						? `${(row as any).createdBy} - ${fmtDateTime(
-								(row as any).createdAt,
-						  )}`
-						: (row as any)?.createdBy ||
-						  fmtDateTime((row as any)?.createdAt),
+				(row) => {
+					const name = pickName((row as any)?.createdBy);
+					const date = fmtDateTime((row as any)?.createdAt);
+					if (name && (row as any)?.createdAt) return `${name} - ${date}`;
+					return name || date;
+				},
 				{
 					id: "createdByDate",
 					header: "Created By / Date",
@@ -229,13 +239,12 @@ export default function InventoryDispatchList() {
 				},
 			),
 			col.accessor(
-				(row) =>
-					(row as any)?.updatedBy && (row as any)?.updatedAt
-						? `${(row as any).updatedBy} - ${fmtDateTime(
-								(row as any).updatedAt,
-						  )}`
-						: (row as any)?.updatedBy ||
-						  fmtDateTime((row as any)?.updatedAt),
+				(row) => {
+					const name = pickName((row as any)?.updatedBy);
+					const date = fmtDateTime((row as any)?.updatedAt);
+					if (name && (row as any)?.updatedAt) return `${name} - ${date}`;
+					return name || date;
+				},
 				{
 					id: "updatedByDate",
 					header: "Updated By / Date",

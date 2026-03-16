@@ -93,7 +93,7 @@ export default function BasicTable<T>({
 		>
 			<style>{`
                 .basic-table-card thead th {
-                    background-color: #f3f6f9 !important;
+                    background-color: #eef0f7 !important;
                     color: #495057;
                     font-weight: Bold;
                     font-size: 16px;

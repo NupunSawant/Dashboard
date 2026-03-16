@@ -1,7 +1,7 @@
 // EnquiryListPage.tsx
 
-import { useEffect, useMemo } from "react";
-import { Alert, Spinner, Button, Badge } from "react-bootstrap";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Spinner, Button } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../../slices/store";
 import {
@@ -14,6 +14,10 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify"; //   ADD
 import { canCreate, canUpdate } from "../../../utils/permission";
+import MenuItem from "@mui/material/MenuItem";
+import Menu from "@mui/material/Menu";
+import IconButton from "@mui/material/IconButton";
+import Divider from "@mui/material/Divider";
 
 const theme = "#1a8376";
 
@@ -50,18 +54,15 @@ export default function EnquiryListPage() {
 	const allowUpdate = canUpdate(authUser, "orders", "enquiry");
 
 	//   safe selector (in case slice key differs)
-	const { enquiries, loadingList, error, updating } = useSelector(
-		(s: RootState) => {
-			const st =
-				(s as any).enquiries || (s as any).Enquiries || (s as any).enquiry;
-			return {
-				enquiries: st?.enquiries ?? [],
-				loadingList: !!st?.loadingList,
-				error: st?.error ?? null,
-				updating: !!st?.updating,
-			};
-		},
+	const enquiryState = useSelector(
+		(s: RootState) =>
+			(s as any).enquiries || (s as any).Enquiries || (s as any).enquiry,
 	);
+
+	const enquiries = enquiryState?.enquiries ?? [];
+	const loadingList = enquiryState?.loadingList ?? false;
+	const error = enquiryState?.error ?? null;
+	const updating = enquiryState?.updating ?? false;
 
 	useEffect(() => {
 		dispatch(fetchEnquiriesThunk());
@@ -149,71 +150,155 @@ export default function EnquiryListPage() {
 							toast.error(e || "Failed to send to RFQ");
 						}
 					};
+					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+					const open = Boolean(anchorEl);
+					const menuItemStyle = {
+						fontSize: "14px",
+						borderRadius: "6px",
+						display: "flex",
+						alignItems: "center",
+						gap: "10px",
+						padding: "8px 12px",
+						minHeight: "36px",
+						fontWeight: 500,
+
+						"& i": {
+							fontSize: "18px",
+							width: "18px",
+							textAlign: "center",
+						},
+
+						"&:hover": {
+							background: "#f5f7f9",
+						},
+
+						"&.Mui-disabled": {
+							opacity: 0.5,
+						},
+					};
 
 					return (
-						<div className='d-flex gap-2'>
-							<Button
-								size='sm'
-								disabled={!id}
-								onClick={() => nav(`/orders/enquiries/${id}/view`)}
-								style={{
-									background: "#eaf4f2",
-									border: "none",
+						<>
+							<IconButton
+								size='small'
+								onClick={(e) => setAnchorEl(e.currentTarget)}
+								sx={{
 									color: theme,
-									borderRadius: "6px",
-									padding: "4px 10px",
+									background: "#edf6f5",
+									borderRadius: "8px",
+									width: 32,
+									height: 32,
+									transition: "all .15s ease",
+									"&:hover": {
+										background: "#dff1ef",
+									},
 								}}
-								title='View'
 							>
-								<i className='ri-eye-line' />
-							</Button>
-							{allowUpdate && (
-								<Button
-									size='sm'
-									disabled={!id}
-									onClick={() => nav(`/orders/enquiries/${id}/edit`)}
-									style={{
-										background: "#f5f7f9",
-										border: "none",
-										color: "#4b5563",
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title='Edit'
-								>
-									<i className='ri-edit-2-line' />
-								</Button>
-							)}
+								<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
+							</IconButton>
 
-							{/*   Send to RFQ */}
-							{allowUpdate && (
-								<Button
-									size='sm'
-									disabled={!canSendToRFQ || updating}
-									onClick={onSendToRFQ}
-									style={{
-										background: canSendToRFQ ? theme : "#e9ecef",
-										border: "none",
-										color: canSendToRFQ ? "#fff" : "#6c757d",
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title={
-										stage === "PENDING"
-											? "Send to RFQ"
-											: "Only PENDING enquiries can be sent to RFQ"
-									}
+							<Menu
+								anchorEl={anchorEl}
+								open={open}
+								disableScrollLock
+								onClose={() => setAnchorEl(null)}
+								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+								transformOrigin={{ vertical: "top", horizontal: "right" }}
+								PaperProps={{
+									sx: {
+										borderRadius: "10px",
+										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+										minWidth: 200,
+										padding: "4px",
+										border: "1px solid #f1f1f1",
+									},
+								}}
+							>
+								{" "}
+								<MenuItem
+									sx={{ ...menuItemStyle, color: theme }}
+									disabled={!id}
+									onClick={() => nav(`/orders/enquiries/${id}/view`)}
+									title='View'
 								>
-									<i className='ri-send-plane-2-line' />
-								</Button>
-							)}
-						</div>
+									<i className='ri-eye-line' />
+									View
+								</MenuItem>
+								<Divider variant='middle' component='li' flexItem={true} />
+								{allowUpdate && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: "#4b5563" }}
+										disabled={!id}
+										onClick={() => nav(`/orders/enquiries/${id}/edit`)}
+										title='Edit'
+									>
+										<i className='ri-edit-2-line' />
+										Edit
+									</MenuItem>
+								)}
+								<Divider variant='middle' component='li' flexItem={true} />
+								{/*   Send to RFQ */}
+								{allowUpdate && (
+									<MenuItem
+										sx={{
+											...menuItemStyle,
+											color: canSendToRFQ ? "#fff" : "#6c757d",
+										}}
+										disabled={!canSendToRFQ || updating}
+										onClick={onSendToRFQ}
+										title={
+											stage === "PENDING"
+												? "Send to RFQ"
+												: "Only PENDING enquiries can be sent to RFQ"
+										}
+									>
+										<i className='ri-send-plane-2-line' />
+										Send to RFQ
+									</MenuItem>
+								)}
+							</Menu>
+						</>
 					);
 				},
 			}),
 		],
 		[col, nav, dispatch, updating],
 	);
+
+	const handleExport = () => {
+		if (!enquiries || enquiries.length === 0) return;
+
+		const rows = enquiries.map((row: any) => ({
+			"Enquiry No": row.enquiryNo,
+			"Enquiry Date": fmtDate(row.enquiryDate),
+			"Customer Name": row.customerName,
+			Phone: row.contactPersonPhone ?? "",
+			Source: row.sourceOfEnquiry ?? "",
+			Staff: row.staffName ?? "",
+			Stage: stageLabel[row.stage] || row.stage,
+		}));
+
+		const headers = Object.keys(rows[0]);
+
+		const csv =
+			headers.join(",") +
+			"\n" +
+			rows
+				.map((r: { [x: string]: any }) => headers.map((h) => r[h]).join(","))
+				.join("\n");
+
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = "enquiries.csv";
+
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	};
 
 	return (
 		<>
@@ -232,6 +317,7 @@ export default function EnquiryListPage() {
 						<div className='d-flex gap-2'>
 							<Button
 								variant='light'
+								onClick={handleExport}
 								style={{
 									border: "1px solid #e9ebec",
 									fontSize: "13px",

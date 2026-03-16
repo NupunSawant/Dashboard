@@ -19,7 +19,10 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { canCreate, canUpdate } from "../../../utils/permission";
-
+import Divider from "@mui/material/Divider";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import IconButton from "@mui/material/IconButton";
 const theme = "#1a8376";
 
 const statusLabel: Record<QuotationStatus, string> = {
@@ -69,20 +72,15 @@ export default function QuotationList() {
 	const allowCreate = canCreate(authUser, "orders", "quotation");
 	const allowUpdate = canUpdate(authUser, "orders", "quotation");
 
-	const quotationState = useSelector((s: RootState) => {
-		const st = pickQuotationState(s as any);
+	const quotationSlice = useSelector((s: RootState) =>
+		pickQuotationState(s as any),
+	);
 
-		return {
-			quotations: (st?.quotations ?? []) as Quotation[],
-			quotationRequests: (st?.quotationRequests ?? []) as Enquiry[],
-			loadingList: !!st?.loadingList,
-			saving: !!st?.saving,
-			error: (st?.error ?? null) as string | null,
-		};
-	});
-
-	const { quotations, quotationRequests, loadingList, saving, error } =
-		quotationState;
+	const quotations = quotationSlice?.quotations ?? [];
+	const quotationRequests = quotationSlice?.quotationRequests ?? [];
+	const loadingList = quotationSlice?.loadingList ?? false;
+	const saving = quotationSlice?.saving ?? false;
+	const error = quotationSlice?.error ?? null;
 
 	useEffect(() => {
 		dispatch(fetchQuotationsThunk());
@@ -312,77 +310,132 @@ export default function QuotationList() {
 						isReadyToDispatch === false;
 
 					const busyReq = !!requestingId && requestingId === id;
+					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+					const open = Boolean(anchorEl);
+					const menuItemStyle = {
+						fontSize: "14px",
+						borderRadius: "6px",
+						display: "flex",
+						alignItems: "center",
+						gap: "10px",
+						padding: "8px 12px",
+						minHeight: "36px",
+						fontWeight: 500,
+
+						"& i": {
+							fontSize: "18px",
+							width: "18px",
+							textAlign: "center",
+						},
+
+						"&:hover": {
+							background: "#f5f7f9",
+						},
+
+						"&.Mui-disabled": {
+							opacity: 0.5,
+						},
+					};
 					return (
-						<div className='d-flex gap-2 align-items-center flex-wrap'>
-							<Button
-								size='sm'
-								disabled={!id}
-								onClick={() => nav(`/orders/quotations/view/${id}`)}
-								style={{
-									background: "#eaf4f2",
-									border: "none",
+						<>
+							<IconButton
+								size='small'
+								onClick={(e) => setAnchorEl(e.currentTarget)}
+								sx={{
 									color: theme,
-									borderRadius: "6px",
-									padding: "4px 10px",
+									background: "#edf6f5",
+									borderRadius: "8px",
+									width: 32,
+									height: 32,
+									transition: "all .15s ease",
+									"&:hover": {
+										background: "#dff1ef",
+									},
 								}}
-								title='View'
 							>
-								<i className='ri-eye-line' />
-							</Button>
+								<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
+							</IconButton>
 
-							{allowUpdate && !lockEdit && (
-								<Button
-									size='sm'
+							<Menu
+								anchorEl={anchorEl}
+								open={open}
+								disableScrollLock
+								onClose={() => setAnchorEl(null)}
+								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+								transformOrigin={{ vertical: "top", horizontal: "right" }}
+								PaperProps={{
+									sx: {
+										borderRadius: "10px",
+										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+										minWidth: 200,
+										padding: "4px",
+										border: "1px solid #f1f1f1",
+									},
+								}}
+							>
+								<MenuItem
+									sx={{
+										...menuItemStyle,
+										color: theme,
+									}}
 									disabled={!id}
-									onClick={() => nav(`/orders/quotations/edit/${id}`)}
-									style={{
-										background: "#f5f7f9",
-										border: "none",
-										color: "#4b5563",
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title='Edit'
+									onClick={() => nav(`/orders/quotations/view/${id}`)}
+									title='View'
 								>
-									<i className='ri-edit-2-line' />
-								</Button>
-							)}
+									<i className='ri-eye-line' />
+									View
+								</MenuItem>
+								<Divider variant='middle' component='li' flexItem={true} />
 
-							{allowUpdate && canShowRequestDispatch && (
-								<Button
-									size='sm'
-									disabled={!id || busyReq}
-									onClick={() => requestToDispatch(row)}
-									style={{
-										background: "#1a8376",
-										border: "1px solid #1a8376",
-										color: "white",
-										borderRadius: "6px",
-										padding: "4px 10px",
-										display: "inline-flex",
-										alignItems: "center",
-										gap: 6,
-										fontWeight: 600,
-										opacity: busyReq ? 0.85 : 1,
-										boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
-										transition: "background-color 0.2s, color 0.2s",
-										whiteSpace: "nowrap",
-									}}
-									title='Request to Dispatch'
-								>
-									{busyReq ? (
-										<>
-											<Spinner size='sm' animation='border' /> Sending...
-										</>
-									) : (
-										<>
-											<i className='ri-send-plane-2-line' />
-											Request to Dispatch
-										</>
-									)}
-								</Button>
-							)}
+								{allowUpdate && !lockEdit && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: "#4b5563" }}
+										disabled={!id}
+										onClick={() => nav(`/orders/quotations/edit/${id}`)}
+										title='Edit'
+									>
+										<i className='ri-edit-2-line' />
+										Edit
+									</MenuItem>
+								)}
+
+								{allowUpdate && canShowRequestDispatch && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: "#1a8376" }}
+										disabled={!id || busyReq}
+										onClick={() => requestToDispatch(row)}
+										title='Request to Dispatch'
+									>
+										{busyReq ? (
+											<>
+												<Spinner size='sm' animation='border' /> Sending...
+											</>
+										) : (
+											<>
+												<i className='ri-send-plane-2-line' />
+												Request to Dispatch
+											</>
+										)}
+									</MenuItem>
+								)}
+
+								{isReadyToDispatch && (
+									<span
+										className='badge'
+										style={{
+											background: "#f6ffed",
+											color: "#389e0d",
+											border: "1px solid #b7eb8f",
+											borderRadius: 999,
+											padding: "6px 10px",
+											fontWeight: 700,
+										}}
+									>
+										READY TO DISPATCH
+									</span>
+								)}
+							</Menu>
 
 							{isDispatchRequested && !isReadyToDispatch && (
 								<span
@@ -403,23 +456,7 @@ export default function QuotationList() {
 									DISPATCH REQUESTED
 								</span>
 							)}
-
-							{isReadyToDispatch && (
-								<span
-									className='badge'
-									style={{
-										background: "#f6ffed",
-										color: "#389e0d",
-										border: "1px solid #b7eb8f",
-										borderRadius: 999,
-										padding: "6px 10px",
-										fontWeight: 700,
-									}}
-								>
-									READY TO DISPATCH
-								</span>
-							)}
-						</div>
+						</>
 					);
 				},
 			}),
@@ -481,70 +518,106 @@ export default function QuotationList() {
 					const isBusy = enquiryId && busyId === enquiryId;
 					const disabled = !enquiryId || isBusy || saving;
 
-					return (
-						<div className='d-flex gap-2 justify-content-center'>
-							<Button
-								size='sm'
-								disabled={!enquiryId}
-								onClick={() =>
-									nav(`/orders/quotation-requests/${enquiryId}/view`)
-								}
-								style={{
-									background: "#eaf4f2",
-									border: "none",
-									color: theme,
-									borderRadius: "6px",
-									padding: "4px 10px",
-								}}
-								title='View'
-							>
-								<i className='ri-eye-line' />
-							</Button>
-							{allowUpdate && (
-								<Button
-									variant='light'
-									size='sm'
-									disabled={disabled}
-									onClick={() => revertQuotationRequest(row)}
-									style={{
-										background: "eaf4f2",
-										border: " none",
-										color: theme,
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title='Revert'
-								>
-									{isBusy ? (
-										<Spinner size='sm' animation='border' />
-									) : (
-										<i className='ri-arrow-go-back-line' />
-									)}
-								</Button>
-							)}
+					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-							{allowCreate && (
-								<Button
-									variant='light'
-									size='sm'
-									disabled={disabled}
-									onClick={() => {
-										if (!enquiryId) return;
-										nav(`/orders/quotations/new?enquiryId=${enquiryId}`);
-									}}
-									style={{
-										background: "eaf4f2",
-										border: " none",
-										color: theme,
-										borderRadius: "6px",
-										padding: "4px 10px",
-									}}
-									title='Create Quotation'
+					const open = Boolean(anchorEl);
+					const menuItemStyle = {
+						fontSize: "12px",
+						borderRadius: "6px",
+						display: "flex",
+						alignItems: "center",
+						gap: "8px",
+						padding: "5px 10px",
+						minHeight: "18px",
+						"& i": {
+							width: "15px",
+							textAlign: "center",
+						},
+						"&:hover": {
+							background: "#f5f7f9",
+						},
+					};
+
+					return (
+						<>
+							<IconButton
+								size='small'
+								onClick={(e) => setAnchorEl(e.currentTarget)}
+								sx={{
+									color: theme,
+									background: "#edf6f5",
+									borderRadius: "8px",
+									width: 32,
+									height: 32,
+									transition: "all .15s ease",
+									"&:hover": {
+										background: "#dff1ef",
+									},
+								}}
+							>
+								<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
+							</IconButton>
+
+							<Menu
+								anchorEl={anchorEl}
+								open={open}
+								disableScrollLock
+								onClose={() => setAnchorEl(null)}
+								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+								transformOrigin={{ vertical: "top", horizontal: "right" }}
+								PaperProps={{
+									sx: {
+										borderRadius: "10px",
+										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+										minWidth: 200,
+										padding: "4px",
+										border: "1px solid #f1f1f1",
+									},
+								}}
+							>
+								<MenuItem
+									sx={{ ...menuItemStyle, color: theme }}
+									disabled={!enquiryId}
+									onClick={() =>
+										nav(`/orders/quotation-requests/${enquiryId}/view`)
+									}
+									title='View'
 								>
-									<i className='ri-add-circle-line' />
-								</Button>
-							)}
-						</div>
+									<i className='ri-eye-line' />
+									View
+								</MenuItem>
+								{allowUpdate && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: theme }}
+										disabled={disabled}
+										onClick={() => revertQuotationRequest(row)}
+										title='Revert'
+									>
+										{isBusy ? (
+											<Spinner size='sm' animation='border' />
+										) : (
+											<i className='ri-arrow-go-back-line' />
+										)}
+										Revert
+									</MenuItem>
+								)}
+
+								{allowCreate && (
+									<MenuItem
+										sx={{ ...menuItemStyle, color: theme }}
+										disabled={disabled}
+										onClick={() => {
+											if (!enquiryId) return;
+											nav(`/orders/quotations/new?enquiryId=${enquiryId}`);
+										}}
+										title='Create Quotation'
+									>
+										<i className='ri-add-circle-line' />
+										Create Quotation
+									</MenuItem>
+								)}
+							</Menu>
+						</>
 					);
 				},
 			}),
@@ -588,7 +661,6 @@ export default function QuotationList() {
 				</div>
 			) : activeTab === "REQUESTS" ? (
 				<>
-
 					<BasicTable
 						columns={requestColumns}
 						data={quotationRequests}
@@ -620,8 +692,6 @@ export default function QuotationList() {
 										alignItems: "center",
 										gap: "6px",
 									}}
-									title='Future'
-									disabled
 								>
 									<i className='ri-upload-2-line' /> Export
 								</Button>

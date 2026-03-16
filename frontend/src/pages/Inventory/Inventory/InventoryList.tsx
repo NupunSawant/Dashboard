@@ -138,6 +138,53 @@ export default function InventoryList() {
 			? "Inventory - Stock Overview"
 			: "Inventory - Warehouse-wise Stock";
 
+	const handleExport = () => {
+		const data = tab === "OVERVIEW" ? stockOverview : warehouseStock;
+		if (!data || data.length === 0) return;
+
+		let rows: any[] = [];
+
+		if (tab === "OVERVIEW") {
+			rows = data.map((row: any) => ({
+				"Item Name": row.itemName,
+				Category: row.category,
+				"Sub Category": row.subCategory,
+				Unit: row.unit,
+				Received: row.receivedQuantity ?? 0,
+				Available: row.availableQuantity ?? 0,
+				Reserved: row.reservedQuantity ?? 0,
+			}));
+		} else {
+			rows = data.map((row: any) => ({
+				"Item Name": row.itemName,
+				Category: row.category,
+				"Sub Category": row.subCategory,
+				Unit: row.unit,
+				Available: row.availableQuantity ?? 0,
+			}));
+		}
+
+		const headers = Object.keys(rows[0]);
+		const csv =
+			headers.join(",") +
+			"\n" +
+			rows.map((r) => headers.map((h) => r[h]).join(",")).join("\n");
+
+		const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+		const url = URL.createObjectURL(blob);
+
+		const link = document.createElement("a");
+		link.href = url;
+		link.download =
+			tab === "OVERVIEW"
+				? "inventory-stock-overview.csv"
+				: "inventory-warehouse-stock.csv";
+
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+	};
+
 	return (
 		<>
 			{error && <Alert variant='danger'>{error}</Alert>}
@@ -187,6 +234,7 @@ export default function InventoryList() {
 						<div className='d-flex gap-2'>
 							<Button
 								variant='light'
+								onClick={handleExport}
 								style={{
 									border: "1px solid #e9ebec",
 									fontSize: "13px",
@@ -210,6 +258,7 @@ export default function InventoryList() {
 						<div className='d-flex gap-2'>
 							<Button
 								variant='light'
+								onClick={handleExport}
 								style={{
 									border: "1px solid #e9ebec",
 									fontSize: "13px",

@@ -100,12 +100,18 @@ export const listReadyToDispatchOrders = async () => {
 			{ readyToDispatch: true },
 		],
 	})
+		.populate("createdBy", "firstName lastName")
+		.populate("updatedBy", "firstName lastName")
 		.sort({ createdAt: -1 })
 		.lean();
 };
 
 export const listDispatches = async () => {
-	return Dispatch.find().sort({ createdAt: -1 }).lean();
+	return Dispatch.find()
+		.populate("createdBy", "firstName lastName")
+		.populate("updatedBy", "firstName lastName")
+		.sort({ createdAt: -1 })
+		.lean();
 };
 
 export const listPendingSalesReturns = async () => {
