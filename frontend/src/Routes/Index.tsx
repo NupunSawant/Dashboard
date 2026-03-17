@@ -232,7 +232,12 @@ export default function RoutesIndex() {
 				/>
 				<Route
 					path='/warehouses/warehouse-overview'
-					element={guard(<WarehouseOverviewPage />)}
+					element={guard(
+						<WarehouseOverviewPage />,
+						"warehouse",
+						"warehouseOverview",
+						"view",
+					)}
 				/>
 				<Route
 					path='/warehouses/:id/view'
@@ -317,7 +322,7 @@ export default function RoutesIndex() {
 					)}
 				/>
 
-				<Route path='/dashboard' element={guard(<DashboardPage />)} />
+				<Route path='/dashboard' element={guard(<DashboardPage />,"dashboard","dashboard","view")}/>
 
 				{/* Inventory */}
 				<Route
