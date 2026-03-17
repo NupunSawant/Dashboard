@@ -15,7 +15,7 @@ import {
 import { clearSelected } from "../../../slices/Masters/customers/reducer";
 import React from "react";
 import { toast } from "react-toastify";
-import { Country, State, City } from "country-state-city";
+import {  State, City } from "country-state-city";
 
 const theme = "#1a8376";
 

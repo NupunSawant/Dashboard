@@ -29,7 +29,7 @@ type MenuItem = {
 
 const theme = "#1a8376";
 
-export default function AppSidebar({ collapsed, onToggle }: Props) {
+export default function AppSidebar({ collapsed }: Props) {
 	const navigate = useNavigate();
 	const dispatch = useDispatch<AppDispatch>();
 	const location = useLocation();

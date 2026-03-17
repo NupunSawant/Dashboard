@@ -3,9 +3,6 @@ import {
 	Alert,
 	Spinner,
 	Button,
-	Dropdown,
-	ButtonGroup,
-	Badge,
 } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../../slices/store";
@@ -42,6 +39,7 @@ export default function QuotationRequestList() {
 
 	//   controls which row dropdown is open
 	const [openId, setOpenId] = useState<string | null>(null);
+	setOpenId;
 
 	const quotationRequests = useSelector((s: RootState) => {
 		const st = pickQuotationState(s as any);
@@ -121,6 +119,7 @@ export default function QuotationRequestList() {
 					const disabled = !enquiryId || isBusy || saving;
 
 					const show = openId === enquiryId;
+					show;
 
 					return (
 						<div className='d-flex gap-2 justify-content-center'>
