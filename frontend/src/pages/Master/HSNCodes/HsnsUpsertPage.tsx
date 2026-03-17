@@ -15,7 +15,6 @@ import {
 } from "../../../slices/Masters/hsnCodes/thunks";
 import { clearSelectedHSNCode } from "../../../slices/Masters/hsnCodes/reducer";
 import { toast } from "react-toastify";
-import { fetchGSTsThunk } from "../../../slices/Masters/gst/thunks";
 
 const theme = "#1a8376";
 
