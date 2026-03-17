@@ -10,8 +10,63 @@ import BasicTable from "../../../components/Table/BasicTable";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useNavigate } from "react-router-dom";
 import { canCreate, canUpdate } from "../../../utils/permission";
+import { toast } from "react-toastify";
 
 const theme = "#1a8376";
+
+const fmtDateTime = (val: any) => {
+	if (!val) return "-";
+	try {
+		const d = new Date(val);
+		return Number.isNaN(d.getTime()) ? String(val) : d.toLocaleString();
+	} catch {
+		return String(val);
+	}
+};
+
+const pickUserName = (val: any) => {
+	if (!val) return "-";
+	if (typeof val === "object") {
+		return (
+			val.name ||
+			`${val.firstName || ""} ${val.lastName || ""}`.trim() ||
+			val.email ||
+			"-"
+		);
+	}
+	return String(val);
+};
+
+const escapeCsvValue = (value: any) => {
+	if (value === null || value === undefined) return "";
+	const str = String(value).replace(/"/g, '""');
+	return `"${str}"`;
+};
+
+const downloadCsv = (fileName: string, headers: string[], rows: any[][]) => {
+	if (!rows.length) {
+		toast.info("No data available to export");
+		return;
+	}
+
+	const csvContent = [
+		headers.map(escapeCsvValue).join(","),
+		...rows.map((row) => row.map(escapeCsvValue).join(",")),
+	].join("\n");
+
+	const blob = new Blob([csvContent], {
+		type: "text/csv;charset=utf-8;",
+	});
+
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.setAttribute("download", fileName);
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	window.URL.revokeObjectURL(url);
+};
 
 export default function SubCategoriesList() {
 	const dispatch = useDispatch<AppDispatch>();
@@ -28,6 +83,41 @@ export default function SubCategoriesList() {
 	useEffect(() => {
 		dispatch(fetchSubCategoriesThunk());
 	}, [dispatch]);
+
+	const handleExport = () => {
+		const rows = (subCategories || []).map((subCategory) => [
+			subCategory.name,
+			subCategory.category,
+			subCategory.remark,
+			fmtDateTime(subCategory.createdAt),
+			pickUserName(subCategory.createdBy),
+			fmtDateTime(subCategory.updatedAt),
+			pickUserName(subCategory.updatedBy),
+		]);
+
+		const today = new Date();
+		const yyyy = today.getFullYear();
+		const mm = String(today.getMonth() + 1).padStart(2, "0");
+		const dd = String(today.getDate()).padStart(2, "0");
+
+		downloadCsv(
+			`sub_categories_${yyyy}-${mm}-${dd}.csv`,
+			[
+				"Sub Category",
+				"Category",
+				"Remark",
+				"Created At",
+				"Created By",
+				"Updated At",
+				"Updated By",
+			],
+			rows,
+		)
+
+		if((subCategories || []).length) {
+			toast.success("Sub Categories exported successfully");
+		}
+	}
 
 	const col = createColumnHelper<SubCategory>();
 
@@ -47,33 +137,19 @@ export default function SubCategoriesList() {
 			}),
 			col.accessor("createdAt", {
 				header: "Created At",
-				cell: (i) => {
-					const v = i.getValue();
-					if (!v) return "-";
-					return new Date(v).toLocaleString();
-				},
+				cell: (i) => fmtDateTime(i.getValue()),
 			}),
 			col.accessor("createdBy", {
 				header: "Created By",
-				cell: (i) => {
-					const v = i.getValue();
-					return v && typeof v === "object" ? (v as any).name : "-";
-				},
+				cell: (i) => pickUserName(i.getValue()),
 			}),
 			col.accessor("updatedAt", {
 				header: "Updated At",
-				cell: (i) => {
-					const v = i.getValue();
-					if (!v) return "-";
-					return new Date(v).toLocaleString();
-				},
+				cell: (i) => fmtDateTime(i.getValue()),
 			}),
 			col.accessor("updatedBy", {
 				header: "Updated By",
-				cell: (i) => {
-					const v = i.getValue();
-					return v && typeof v === "object" ? (v as any).name : "-";
-				},
+				cell: (i) => pickUserName(i.getValue()),
 			}),
 
 			//   action column — ALWAYS last
@@ -122,6 +198,7 @@ export default function SubCategoriesList() {
 						<div className='d-flex gap-2'>
 							<Button
 								variant='light'
+								onClick={handleExport}
 								style={{
 									border: "1px solid #e9ebec",
 									fontSize: "13px",
