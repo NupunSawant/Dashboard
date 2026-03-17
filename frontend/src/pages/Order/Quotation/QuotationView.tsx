@@ -87,7 +87,7 @@ export default function QuotationView() {
 
 	const [apiError, setApiError] = useState<string | null>(null);
 
-	const { selectedQuotation, loadingOne, saving, error } = useSelector(
+	const { selectedQuotation, loadingOne, error } = useSelector(
 		(s: RootState) => {
 			const st =
 				(s as any).quotation ||
@@ -168,6 +168,7 @@ export default function QuotationView() {
 			toast.error(msg);
 		}
 	};
+	doStatus;
 
 	return (
 		<>
@@ -352,9 +353,10 @@ export default function QuotationView() {
 										<span
 											className='badge'
 											style={{
-												background:
-													(statusBadge[status] || statusBadge.PENDING).bg,
-												color: (statusBadge[status] || statusBadge.PENDING).text,
+												background: (statusBadge[status] || statusBadge.PENDING)
+													.bg,
+												color: (statusBadge[status] || statusBadge.PENDING)
+													.text,
 												border: `1px solid ${
 													(statusBadge[status] || statusBadge.PENDING).border
 												}`,
@@ -571,7 +573,6 @@ export default function QuotationView() {
 								</div>
 							</div>
 
-							
 							{/* <div className='p-3 p-md-4' style={sectionCardStyle}>
 								<div className='d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3'>
 									<div className='d-flex align-items-center gap-2'>
@@ -735,7 +736,8 @@ export default function QuotationView() {
 										marginTop: 14,
 										padding: 16,
 										borderRadius: 14,
-										background: "linear-gradient(135deg, #f2fbf8 0%, #ffffff 100%)",
+										background:
+											"linear-gradient(135deg, #f2fbf8 0%, #ffffff 100%)",
 										border: "1px solid #dcefeb",
 									}}
 								>

@@ -29,7 +29,7 @@ apiClient.interceptors.response.use(
             originalRequest._retry = true;
             
             if(isRefreshing) {
-                return new Promise((resolve,reject) => {
+                return new Promise((resolve,_) => {
                     pendingQueue.push((token) => {
                         originalRequest.headers.Authorization = `Bearer ${token}`;
                         resolve(apiClient(originalRequest));

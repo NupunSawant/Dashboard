@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../slices/store";
-import { Navbar, Nav, Container, Button } from "react-bootstrap";
+import { Navbar, Nav, Button } from "react-bootstrap";
 import { logoutThunk } from "../../slices/auth/thunks";
 
 export default function AppNavbar() {

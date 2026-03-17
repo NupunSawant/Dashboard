@@ -85,7 +85,7 @@ export default function StockTransferList() {
 
 	const columns = useMemo(
 		() => [
-			col.accessor((row, idx) => idx + 1, {
+			col.accessor((_, idx) => idx + 1, {
 				id: "srNo",
 				header: "Sr No",
 				cell: (i) => String(i.getValue() ?? "-"),
