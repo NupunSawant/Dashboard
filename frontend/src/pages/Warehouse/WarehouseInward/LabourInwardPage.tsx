@@ -69,7 +69,9 @@ export default function LabourInwardPage() {
 	const { categories = [] } = useSelector((s: RootState) => s.categories);
 	const { subCategories = [] } = useSelector((s: RootState) => s.subCategories);
 	const { items: masterItems = [] } = useSelector((s: RootState) => s.items);
-	
+	const issueState =
+		(useSelector((s: RootState) => (s as any).issueToLabour) as any) || {};
+	const selectedIssue = issueState.selected || null;
 
 	const [initialValues, setInitialValues] = useState({
 		dispatchNo: "",
