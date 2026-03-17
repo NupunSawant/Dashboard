@@ -72,6 +72,7 @@ export default function LabourInwardPage() {
 	const issueState =
 		(useSelector((s: RootState) => (s as any).issueToLabour) as any) || {};
 	const selectedIssue = issueState.selected || null;
+	selectedIssue;	
 
 	const [initialValues, setInitialValues] = useState({
 		dispatchNo: "",

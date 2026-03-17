@@ -60,14 +60,16 @@ export default function AuthProtected({
 	}
 
 	if (section && module) {
+		const hasViewAccess = canView(authUser, section, module);
+
 		let hasAccess = false;
 
 		if (action === "view") {
-			hasAccess = canView(authUser, section, module);
+			hasAccess = hasViewAccess;
 		} else if (action === "create") {
-			hasAccess = canCreate(authUser, section, module);
+			hasAccess = hasViewAccess && canCreate(authUser, section, module);
 		} else if (action === "update") {
-			hasAccess = canUpdate(authUser, section, module);
+			hasAccess = hasViewAccess && canUpdate(authUser, section, module);
 		}
 
 		if (!hasAccess) {
