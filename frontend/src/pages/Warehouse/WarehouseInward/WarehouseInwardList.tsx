@@ -21,6 +21,7 @@ import type { IssueToLabour } from "../../../types/Warehouses/issueToLabour";
 import { fetchPendingSalesReturnDispatchesThunk } from "../../../slices/Warehouse/Dispatch/thunks";
 import type { Dispatch as DispatchType } from "../../../types/Warehouses/dispatch";
 import IconButton from "@mui/material/IconButton";
+import { toast } from "react-toastify";
 
 const theme = "#1a8376";
 
@@ -29,6 +30,67 @@ type TabKey =
 	| "PENDING_TRANSFER"
 	| "PENDING_LABOUR"
 	| "PENDING_SALE_RETURN";
+
+const escapeCsvValue = (value: any) => {
+	if (value === null || value === undefined) return "";
+	const str = String(value).replace(/"/g, '""');
+	return `"${str}"`;
+};
+
+const downloadCsv = (fileName: string, headers: string[], rows: any[][]) => {
+	if (!rows.length) {
+		toast.info("No data available to export");
+		return;
+	}
+
+	const csvContent = [
+		headers.map(escapeCsvValue).join(","),
+		...rows.map((row) => row.map(escapeCsvValue).join(",")),
+	].join("\n");
+
+	const blob = new Blob([csvContent], {
+		type: "text/csv;charset=utf-8;",
+	});
+
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.setAttribute("download", fileName);
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	window.URL.revokeObjectURL(url);
+};
+
+const statusLabel = (status?: string) => {
+	const s = String(status || "DISPATCHED").toUpperCase();
+	const map: Record<string, string> = {
+		DISPATCHED: "Dispatched",
+		COMPLETED: "Completed",
+		REVERTED: "Reverted",
+	};
+	return map[s] || s;
+};
+
+const returnedItemStatusLabel = (status?: string) => {
+	const s = String(status || "NOT_RETURNED").toUpperCase();
+	const map: Record<string, string> = {
+		NOT_RETURNED: "Not Returned",
+		PARTIALLY_RETURNED: "Partially Returned",
+		FULLY_RETURNED: "Fully Returned",
+	};
+	return map[s] || s;
+};
+
+const salesReturnInwardStatusLabel = (status?: string) => {
+	const s = String(status || "NONE").toUpperCase();
+	const map: Record<string, string> = {
+		NONE: "None",
+		PENDING: "Pending",
+		COMPLETED: "Completed",
+	};
+	return map[s] || s;
+};
 
 const statusBadge = (status?: string) => {
 	const s = String(status || "DISPATCHED").toUpperCase();
@@ -126,6 +188,113 @@ const fmtDate = (val: any) => {
 		return String(val);
 	}
 };
+
+function InwardRowActions({
+	id,
+	allowUpdate,
+	nav,
+}: {
+	id: string;
+	allowUpdate: boolean;
+	nav: ReturnType<typeof useNavigate>;
+}) {
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+	const open = Boolean(anchorEl);
+	const menuItemStyle = {
+		fontSize: "14px",
+		borderRadius: "6px",
+		display: "flex",
+		alignItems: "center",
+		gap: "10px",
+		padding: "8px 12px",
+		minHeight: "36px",
+		fontWeight: 500,
+
+		"& i": {
+			fontSize: "18px",
+			width: "18px",
+			textAlign: "center",
+		},
+
+		"&:hover": {
+			background: "#f5f7f9",
+		},
+
+		"&.Mui-disabled": {
+			opacity: 0.5,
+		},
+	};
+
+	return (
+		<>
+			<IconButton
+				size='small'
+				onClick={(e) => setAnchorEl(e.currentTarget)}
+				sx={{
+					color: theme,
+					background: "#edf6f5",
+					borderRadius: "8px",
+					width: 32,
+					height: 32,
+					transition: "all .15s ease",
+					"&:hover": {
+						background: "#dff1ef",
+					},
+				}}
+			>
+				<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
+			</IconButton>
+
+			<Menu
+				anchorEl={anchorEl}
+				open={open}
+				disableScrollLock
+				onClose={() => setAnchorEl(null)}
+				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				transformOrigin={{ vertical: "top", horizontal: "right" }}
+				PaperProps={{
+					sx: {
+						borderRadius: "10px",
+						boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+						minWidth: 200,
+						padding: "4px",
+						border: "1px solid #f1f1f1",
+					},
+				}}
+			>
+				<MenuItem
+					sx={{ ...menuItemStyle, color: theme }}
+					disabled={!id}
+					onClick={() => {
+						nav(`/warehouses/inward/${id}/view`);
+						setAnchorEl(null);
+					}}
+					title='View'
+				>
+					<i className='ri-eye-line' />
+					View
+				</MenuItem>
+				<Divider variant='middle' component='li' flexItem />
+
+				{allowUpdate && (
+					<MenuItem
+						sx={{ ...menuItemStyle, color: theme }}
+						disabled={!id}
+						onClick={() => {
+							nav(`/warehouses/inward/${id}/edit`);
+							setAnchorEl(null);
+						}}
+						title='Edit'
+					>
+						<i className='ri-pencil-line' />
+						Edit
+					</MenuItem>
+				)}
+			</Menu>
+		</>
+	);
+}
 
 export default function WarehouseInwardList() {
 	const dispatch = useDispatch<AppDispatch>();
@@ -248,96 +417,12 @@ export default function WarehouseInwardList() {
 				header: "Action",
 				enableSorting: false,
 				cell: (i) => {
-					const id = i.getValue() || (i.row.original as any)._id;
-					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-					const open = Boolean(anchorEl);
-					const menuItemStyle = {
-  fontSize: "14px",
-  borderRadius: "6px",
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  padding: "8px 12px",
-  minHeight: "36px",
-  fontWeight: 500,
-
-  "& i": {
-    fontSize: "18px",
-    width: "18px",
-    textAlign: "center",
-  },
-
-  "&:hover": {
-    background: "#f5f7f9",
-  },
-
-  "&.Mui-disabled": {
-    opacity: 0.5,
-  },
-};
+					const id = String(
+						i.getValue() || (i.row.original as any)._id || "",
+					).trim();
 
 					return (
-						<>
-							<IconButton
-								size='small'
-								onClick={(e) => setAnchorEl(e.currentTarget)}
-								sx={{
-									color: theme,
-									background: "#edf6f5",
-									borderRadius: "8px",
-									width: 32,
-									height: 32,
-									transition: "all .15s ease",
-									"&:hover": {
-										background: "#dff1ef",
-									},
-								}}
-							>
-								<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
-							</IconButton>
-
-							<Menu
-								anchorEl={anchorEl}
-								open={open}
-								disableScrollLock
-								onClose={() => setAnchorEl(null)}
-								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-								transformOrigin={{ vertical: "top", horizontal: "right" }}
-								PaperProps={{
-									sx: {
-										borderRadius: "10px",
-										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-										minWidth: 200,
-										padding: "4px",
-										border: "1px solid #f1f1f1",
-									},
-								}}
-							>
-								<MenuItem
-									sx={{ ...menuItemStyle, color: theme }}
-									disabled={!id}
-									onClick={() => nav(`/warehouses/inward/${id}/view`)}
-									title='View'
-								>
-									<i className='ri-eye-line'  />
-									View
-								</MenuItem>
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowUpdate && (
-									<MenuItem
-										sx={{ ...menuItemStyle, color: theme }}
-										disabled={!id}
-										onClick={() => nav(`/warehouses/inward/${id}/edit`)}
-										title='Edit'
-									>
-										<i className='ri-pencil-line'  />
-										Edit
-									</MenuItem>
-								)}
-							</Menu>
-						</>
+						<InwardRowActions id={id} allowUpdate={allowUpdate} nav={nav} />
 					);
 				},
 			}),
@@ -542,6 +627,134 @@ export default function WarehouseInwardList() {
 		[returnCol, nav],
 	);
 
+	const handleExport = () => {
+		const today = new Date();
+		const yyyy = today.getFullYear();
+		const mm = String(today.getMonth() + 1).padStart(2, "0");
+		const dd = String(today.getDate()).padStart(2, "0");
+
+		if (activeTab === "GRN") {
+			const headers = [
+				"Sr No",
+				"GRN No",
+				"Inward Type",
+				"Inward Date",
+				"Supplier",
+				"Warehouse",
+				"Invoice No",
+				"Item",
+				"Qty",
+				"Unit",
+				"Amount",
+				"Remarks",
+			];
+
+			const rows = (warehouseInwards || []).map((row: any) => [
+				row?.srNo ?? "-",
+				row?.grnNo || "-",
+				row?.inwardType || "-",
+				fmtDate(row?.inwardDate),
+				row?.supplierName || "-",
+				row?.warehouseName || "-",
+				row?.invoiceNo || "-",
+				row?.itemsName || "-",
+				row?.itemsQuantity ?? "-",
+				row?.itemsUnit || "-",
+				row?.itemsAmount ?? "-",
+				row?.remarks || "-",
+			]);
+
+			downloadCsv(`warehouse_inward_${yyyy}-${mm}-${dd}.csv`, headers, rows);
+			toast.success("Warehouse Inward exported successfully");
+			return;
+		}
+
+		if (activeTab === "PENDING_TRANSFER") {
+			const headers = [
+				"Sr No",
+				"Transfer No",
+				"Transfer Date",
+				"Transfer From",
+				"Transfer To",
+				"Status",
+			];
+
+			const rows = (pendingTransfers || []).map((row: any, idx: number) => [
+				idx + 1,
+				row?.transferNo || "-",
+				fmtDate(row?.transferDate),
+				row?.transferFromWarehouse || "-",
+				row?.transferToWarehouse || "-",
+				statusLabel(row?.status),
+			]);
+
+			downloadCsv(
+				`pending_stock_transfers_${yyyy}-${mm}-${dd}.csv`,
+				headers,
+				rows,
+			);
+			toast.success("Pending Stock Transfers exported successfully");
+			return;
+		}
+
+		if (activeTab === "PENDING_LABOUR") {
+			const headers = [
+				"Sr No",
+				"Dispatch No",
+				"Dispatch Date",
+				"Labour Name",
+				"Remarks",
+			];
+
+			const rows = (pendingIssueToLabours || []).map(
+				(row: any, idx: number) => [
+					idx + 1,
+					row?.issueNo || "-",
+					fmtDate(row?.issueDate),
+					row?.labourName || "-",
+					row?.remarks || "-",
+				],
+			);
+
+			downloadCsv(
+				`pending_labour_inward_${yyyy}-${mm}-${dd}.csv`,
+				headers,
+				rows,
+			);
+			toast.success("Pending Labour Inward exported successfully");
+			return;
+		}
+
+		if (activeTab === "PENDING_SALE_RETURN") {
+			const headers = [
+				"Sr No",
+				"Dispatch No",
+				"Dispatch Date",
+				"Customer Name",
+				"Warehouse",
+				"Sales Return Inward Status",
+				"Returned Item Status",
+			];
+
+			const rows = (pendingSalesReturns || []).map((row: any, idx: number) => [
+				idx + 1,
+				row?.dispatchNo || "-",
+				fmtDate(row?.dispatchDate),
+				row?.customerName || "-",
+				row?.issuedFromWarehouseName || "-",
+				salesReturnInwardStatusLabel(row?.salesReturnInwardStatus),
+				returnedItemStatusLabel(row?.returnedItemStatus),
+			]);
+
+			downloadCsv(
+				`pending_sales_return_${yyyy}-${mm}-${dd}.csv`,
+				headers,
+				rows,
+			);
+			toast.success("Pending Sales Return exported successfully");
+		}
+	};
+
 	return (
 		<>
 			<style>{`
@@ -573,6 +786,46 @@ export default function WarehouseInwardList() {
 					border-radius: 6px;
 				}
 			`}</style>
+
+			<div className='d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2'>
+				<h4 className='mb-0 fw-bold' style={{ color: "#111" }}>
+					Warehouse Inward
+				</h4>
+
+				<div className='d-flex gap-2 align-items-center'>
+					<Button
+						variant='light'
+						onClick={handleExport}
+						style={{
+							border: "1px solid #e9ebec",
+							fontSize: "13px",
+							borderRadius: "6px",
+							display: "inline-flex",
+							alignItems: "center",
+							gap: "6px",
+						}}
+					>
+						<i className='ri-upload-2-line' /> Export
+					</Button>
+
+					{allowCreate && activeTab === "GRN" && (
+						<Button
+							onClick={() => nav("/warehouses/inward/new")}
+							style={{
+								background: theme,
+								border: "none",
+								borderRadius: "6px",
+								fontSize: "13px",
+								display: "inline-flex",
+								alignItems: "center",
+								gap: "6px",
+							}}
+						>
+							<i className='ri-add-circle-line' /> Add Inward
+						</Button>
+					)}
+				</div>
+			</div>
 
 			<div className='inward-tabs'>
 				<button
@@ -672,40 +925,6 @@ export default function WarehouseInwardList() {
 							data={warehouseInwards || []}
 							columns={columns}
 							title='Warehouse Inward'
-							rightActions={
-								<div className='d-flex gap-2'>
-									<Button
-										variant='light'
-										style={{
-											border: "1px solid #e9ebec",
-											fontSize: "13px",
-											borderRadius: "6px",
-											display: "inline-flex",
-											alignItems: "center",
-											gap: "6px",
-										}}
-									>
-										<i className='ri-upload-2-line' /> Export
-									</Button>
-
-									{allowCreate && (
-										<Button
-											onClick={() => nav("/warehouses/inward/new")}
-											style={{
-												background: theme,
-												border: "none",
-												borderRadius: "6px",
-												fontSize: "13px",
-												display: "inline-flex",
-												alignItems: "center",
-												gap: "6px",
-											}}
-										>
-											<i className='ri-add-circle-line' /> Add Inward
-										</Button>
-									)}
-								</div>
-							}
 						/>
 					)}
 				</>

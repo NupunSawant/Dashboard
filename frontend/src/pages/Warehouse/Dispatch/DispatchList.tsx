@@ -49,6 +49,105 @@ const fmtDateTime = (val: any) => {
 	}
 };
 
+const pickId = (x: any) => String(x?.id || x?._id || "").trim();
+
+const pickName = (val: any): string => {
+	if (!val) return "";
+	if (typeof val === "object") {
+		return (
+			`${val.firstName || ""} ${val.lastName || ""}`.trim() ||
+			String(val._id || val)
+		);
+	}
+	return String(val);
+};
+
+const escapeCsvValue = (value: any) => {
+	if (value === null || value === undefined) return "";
+	const str = String(value).replace(/"/g, '""');
+	return `"${str}"`;
+};
+
+const downloadCsv = (fileName: string, headers: string[], rows: any[][]) => {
+	if (!rows.length) {
+		toast.info("No data available to export");
+		return;
+	}
+
+	const csvContent = [
+		headers.map(escapeCsvValue).join(","),
+		...rows.map((row) => row.map(escapeCsvValue).join(",")),
+	].join("\n");
+
+	const blob = new Blob([csvContent], {
+		type: "text/csv;charset=utf-8;",
+	});
+
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.setAttribute("download", fileName);
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	window.URL.revokeObjectURL(url);
+};
+
+const orderStatusLabel = (status?: string) => {
+	const s = String(status || "PENDING");
+	const map: Record<string, string> = {
+		PENDING: "Pending",
+		REQUESTED_FOR_DISPATCH: "Requested For Dispatch",
+		DISPATCHED: "Dispatched",
+		DELIVERED: "Delivered",
+		CANCELLED: "Cancelled",
+		WON: "Won",
+	};
+	return map[s] || s;
+};
+
+const dispatchStatusLabel = (status?: string) => {
+	const s = String(status || "PENDING");
+	const map: Record<string, string> = {
+		PENDING: "Pending",
+		DELIVERED: "Delivered",
+		CREATED: "Created",
+		DISPATCHED: "Dispatched",
+		CANCELLED: "Cancelled",
+	};
+	return map[s] || s;
+};
+
+const returnStatusLabel = (status?: string) => {
+	const s = String(status || "NOT_RETURNED").toUpperCase();
+	const map: Record<string, string> = {
+		NOT_RETURNED: "Not Returned",
+		PARTIALLY_RETURNED: "Partially Returned",
+		FULLY_RETURNED: "Fully Returned",
+	};
+	return map[s] || s;
+};
+
+const labourStatusLabel = (status?: string) => {
+	const s = String(status || "ISSUED").toUpperCase();
+	const map: Record<string, string> = {
+		ISSUED: "Issued",
+		COMPLETED: "Completed",
+		REVERTED: "Reverted",
+	};
+	return map[s] || s;
+};
+
+const stockTransferStatusLabel = (status?: string) => {
+	const s = String(status || "DISPATCHED").toUpperCase();
+	const map: Record<string, string> = {
+		DISPATCHED: "Dispatched",
+		COMPLETED: "Completed",
+		REVERTED: "Reverted",
+	};
+	return map[s] || s;
+};
+
 const orderStatusBadge = (status?: string) => {
 	const s = String(status || "PENDING");
 
@@ -68,7 +167,7 @@ const orderStatusBadge = (status?: string) => {
 
 	return (
 		<span
-			className='badge'
+			className="badge"
 			style={{
 				background: cfg.bg,
 				color: cfg.text,
@@ -98,7 +197,7 @@ const dispatchStatusBadge = (status?: string) => {
 
 	return (
 		<span
-			className='badge'
+			className="badge"
 			style={{
 				background: cfg.bg,
 				color: cfg.text,
@@ -138,7 +237,7 @@ const returnStatusBadge = (status?: string) => {
 
 	return (
 		<span
-			className='badge'
+			className="badge"
 			style={{
 				background: cfg.bg,
 				color: cfg.text,
@@ -166,7 +265,7 @@ const labourStatusBadge = (status?: string) => {
 
 	return (
 		<span
-			className='badge'
+			className="badge"
 			style={{
 				background: cfg.bg,
 				color: cfg.text,
@@ -181,20 +280,616 @@ const labourStatusBadge = (status?: string) => {
 	);
 };
 
-const pickId = (x: any) => String(x?.id || x?._id || "").trim();
+const stockTransferStatusBadge = (status?: string) => {
+	const s = String(status || "DISPATCHED");
+	const map: Record<string, { bg: string; text: string; label: string }> = {
+		DISPATCHED: { bg: "#e6f7ff", text: "#096dd9", label: "Dispatched" },
+		COMPLETED: { bg: "#f6ffed", text: "#389e0d", label: "Completed" },
+		REVERTED: { bg: "#fff1f0", text: "#cf1322", label: "Reverted" },
+	};
+	const cfg = map[s] || map.DISPATCHED;
 
-const pickName = (val: any): string => {
-	if (!val) return "";
-	if (typeof val === "object") {
-		return (
-			`${val.firstName || ""} ${val.lastName || ""}`.trim() ||
-			String(val._id || val)
-		);
-	}
-	return String(val);
+	return (
+		<span
+			className="badge"
+			style={{
+				background: cfg.bg,
+				color: cfg.text,
+				border: `1px solid ${cfg.bg}`,
+				fontWeight: 600,
+				padding: "6px 10px",
+				borderRadius: 999,
+			}}
+		>
+			{cfg.label}
+		</span>
+	);
 };
 
 type TabKey = "READY" | "DISPATCH" | "STOCK_TRANSFER" | "ISSUE_TO_LABOUR";
+
+type MenuItemStyle = {
+	fontSize: string;
+	borderRadius: string;
+	display: string;
+	alignItems: string;
+	gap: string;
+	padding: string;
+	minHeight: string;
+	fontWeight: number;
+	"& i": {
+		fontSize: string;
+		width: string;
+		textAlign: "center";
+	};
+	"&:hover": {
+		background: string;
+	};
+	"&.Mui-disabled": {
+		opacity: number;
+	};
+};
+
+const menuItemStyle: MenuItemStyle = {
+	fontSize: "14px",
+	borderRadius: "6px",
+	display: "flex",
+	alignItems: "center",
+	gap: "10px",
+	padding: "8px 12px",
+	minHeight: "36px",
+	fontWeight: 500,
+	"& i": {
+		fontSize: "18px",
+		width: "18px",
+		textAlign: "center",
+	},
+	"&:hover": {
+		background: "#f5f7f9",
+	},
+	"&.Mui-disabled": {
+		opacity: 0.5,
+	},
+};
+
+function ReadyRowActions({
+	row,
+	allowCreate,
+	allowUpdate,
+	revertingReady,
+	revertingId,
+	setRevertingId,
+	dispatch,
+	nav,
+}: {
+	row: ReadyToDispatchOrder;
+	allowCreate: boolean;
+	allowUpdate: boolean;
+	revertingReady: boolean;
+	revertingId: string;
+	setRevertingId: (v: string) => void;
+	dispatch: AppDispatch;
+	nav: ReturnType<typeof useNavigate>;
+}) {
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+	const o: any = row;
+	const rowId = String(pickId(o) || "").trim();
+	const orderId = String(o?.orderId || pickId(o) || "").trim();
+	const quotationId = String(o?.quotationId || "").trim();
+	const status = String(o?.orderStatus || o?.status || "");
+	const isOrderRow = !!orderId;
+	const isQuotationRow = !!quotationId;
+	const canCreateDispatch =
+		status === "REQUESTED_FOR_DISPATCH" || status === "WON";
+	const revertBusy = revertingId === rowId;
+	const open = Boolean(anchorEl);
+
+	return (
+		<>
+			<IconButton
+				size="small"
+				onClick={(e) => setAnchorEl(e.currentTarget)}
+				sx={{
+					color: theme,
+					background: "#edf6f5",
+					borderRadius: "8px",
+					width: 32,
+					height: 32,
+					transition: "all .15s ease",
+					"&:hover": {
+						background: "#dff1ef",
+					},
+				}}
+			>
+				<i className="ri-more-2-fill" />
+			</IconButton>
+
+			<Menu
+				anchorEl={anchorEl}
+				open={open}
+				disableScrollLock
+				onClose={() => setAnchorEl(null)}
+				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				transformOrigin={{ vertical: "top", horizontal: "right" }}
+				PaperProps={{
+					sx: {
+						borderRadius: "10px",
+						boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+						minWidth: 200,
+						padding: "4px",
+						border: "1px solid #f1f1f1",
+					},
+				}}
+			>
+				<MenuItem
+					sx={{ ...menuItemStyle, color: theme }}
+					disabled={!isOrderRow}
+					onClick={() => {
+						nav(`/orders/${orderId}`);
+						setAnchorEl(null);
+					}}
+				>
+					<i className="ri-eye-line" />
+					View Order
+				</MenuItem>
+				<Divider variant="middle" component="li" flexItem />
+
+				{allowUpdate && (
+					<MenuItem
+						sx={{ ...menuItemStyle, color: "#cf1322" }}
+						disabled={!rowId || revertBusy || revertingReady}
+						onClick={async () => {
+							try {
+								const ok = window.confirm(
+									"Revert this ready-to-dispatch entry?",
+								);
+								if (!ok) return;
+
+								setRevertingId(rowId);
+
+								if (isQuotationRow) {
+									await dispatch(revertReadyDispatchThunk(rowId)).unwrap();
+									toast.success("Quotation dispatch request reverted");
+								} else {
+									await dispatch(
+										changeOrderStatusThunk({
+											id: orderId,
+											status: "PENDING",
+										}),
+									).unwrap();
+									toast.success("Order reverted to Pending");
+								}
+
+								dispatch(fetchReadyToDispatchThunk());
+								dispatch(fetchDispatchesThunk());
+							} catch (e: any) {
+								toast.error(e || "Failed to revert");
+							} finally {
+								setRevertingId("");
+								setAnchorEl(null);
+							}
+						}}
+					>
+						<i className="ri-arrow-go-back-line" />
+						Revert
+					</MenuItem>
+				)}
+				<Divider variant="middle" component="li" flexItem />
+
+				{allowCreate && (
+					<MenuItem
+						sx={{ ...menuItemStyle, color: "#096dd9" }}
+						disabled={!canCreateDispatch || (!isOrderRow && !isQuotationRow)}
+						onClick={() => {
+							if (isOrderRow) {
+								nav(`/warehouses/dispatch/${orderId}/create`);
+							} else {
+								nav(
+									`/warehouses/dispatch/new?sourceType=QUOTATION&sourceId=${quotationId}`,
+								);
+							}
+							setAnchorEl(null);
+						}}
+					>
+						<i className="ri-truck-line" />
+						Create Dispatch
+					</MenuItem>
+				)}
+			</Menu>
+		</>
+	);
+}
+
+function DispatchRowActions({
+	row,
+	allowUpdate,
+	deliveringId,
+	setDeliveringId,
+	dispatch,
+	nav,
+}: {
+	row: DispatchType;
+	allowUpdate: boolean;
+	deliveringId: string;
+	setDeliveringId: (v: string) => void;
+	dispatch: AppDispatch;
+	nav: ReturnType<typeof useNavigate>;
+}) {
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+	const d: any = row;
+	const currentDispatchId =
+		pickId(d) || String(d?.dispatchId || d?.dispatchNo || "").trim();
+	const status = String(d?.dispatchStatus || "PENDING");
+	const returnStatus = String(
+		d?.returnedItemStatus || "NOT_RETURNED",
+	).toUpperCase();
+	const canDeliver = status === "PENDING";
+	const canReturn =
+		status === "DELIVERED" && returnStatus === "NOT_RETURNED";
+	const busy = deliveringId === currentDispatchId;
+	const open = Boolean(anchorEl);
+
+	return (
+		<>
+			<IconButton
+				size="small"
+				onClick={(e) => setAnchorEl(e.currentTarget)}
+				sx={{
+					color: theme,
+					background: "#edf6f5",
+					borderRadius: "8px",
+					width: 32,
+					height: 32,
+					transition: "all .15s ease",
+					"&:hover": {
+						background: "#dff1ef",
+					},
+				}}
+			>
+				<i className="ri-more-2-fill" />
+			</IconButton>
+
+			<Menu
+				anchorEl={anchorEl}
+				open={open}
+				disableScrollLock
+				onClose={() => setAnchorEl(null)}
+				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				transformOrigin={{ vertical: "top", horizontal: "right" }}
+				PaperProps={{
+					sx: {
+						borderRadius: "10px",
+						boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+						minWidth: 200,
+						padding: "4px",
+						border: "1px solid #f1f1f1",
+					},
+				}}
+			>
+				<MenuItem
+					sx={{ ...menuItemStyle, color: theme }}
+					disabled={!currentDispatchId}
+					onClick={() => {
+						nav(`/warehouses/dispatch/${currentDispatchId}/view`);
+						setAnchorEl(null);
+					}}
+				>
+					<i className="ri-eye-line" />
+					View Dispatch
+				</MenuItem>
+
+				<Divider variant="middle" component="li" flexItem />
+
+				{allowUpdate && (
+					<MenuItem
+						sx={{ ...menuItemStyle, color: "#389e0d" }}
+						disabled={!currentDispatchId || !canDeliver || busy}
+						onClick={async () => {
+							try {
+								const ok = window.confirm(
+									"Mark this dispatch as Delivered?",
+								);
+								if (!ok) return;
+
+								setDeliveringId(currentDispatchId);
+								await dispatch(deliverDispatchThunk(currentDispatchId)).unwrap();
+								toast.success("Dispatch marked Delivered");
+
+								dispatch(fetchDispatchesThunk());
+								dispatch(fetchReadyToDispatchThunk());
+							} catch (e: any) {
+								toast.error(e || "Failed to deliver dispatch");
+							} finally {
+								setDeliveringId("");
+								setAnchorEl(null);
+							}
+						}}
+						title="Deliver"
+					>
+						<i className="ri-check-double-line" />
+						Deliver
+						{busy ? "..." : ""}
+					</MenuItem>
+				)}
+
+				<Divider variant="middle" component="li" flexItem />
+
+				{allowUpdate && canReturn && (
+					<MenuItem
+						sx={{ ...menuItemStyle, color: "#096dd9" }}
+						disabled={!currentDispatchId}
+						onClick={() => {
+							nav(`/warehouses/dispatch/${currentDispatchId}/sales-return`);
+							setAnchorEl(null);
+						}}
+						title="Sales Return"
+					>
+						<i className="ri-arrow-go-back-line" />
+						Return
+					</MenuItem>
+				)}
+			</Menu>
+		</>
+	);
+}
+
+function StockTransferRowActions({
+	row,
+	allowUpdate,
+	revertingStId,
+	setRevertingStId,
+	dispatch,
+	nav,
+}: {
+	row: StockTransfer;
+	allowUpdate: boolean;
+	revertingStId: string;
+	setRevertingStId: (v: string) => void;
+	dispatch: AppDispatch;
+	nav: ReturnType<typeof useNavigate>;
+}) {
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+	const o: any = row;
+	const id = String(o?.id || o?._id || "").trim();
+	const status = String(o?.status || "DISPATCHED");
+	const canEdit = status === "DISPATCHED";
+	const canRevert = status === "DISPATCHED";
+	const busy = revertingStId === id;
+	const open = Boolean(anchorEl);
+
+	return (
+		<>
+			<IconButton
+				size="small"
+				onClick={(e) => setAnchorEl(e.currentTarget)}
+				sx={{
+					color: theme,
+					background: "#edf6f5",
+					borderRadius: "8px",
+					width: 32,
+					height: 32,
+					transition: "all .15s ease",
+					"&:hover": {
+						background: "#dff1ef",
+					},
+				}}
+			>
+				<i className="ri-more-2-fill" />
+			</IconButton>
+
+			<Menu
+				anchorEl={anchorEl}
+				open={open}
+				disableScrollLock
+				onClose={() => setAnchorEl(null)}
+				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				transformOrigin={{ vertical: "top", horizontal: "right" }}
+				PaperProps={{
+					sx: {
+						borderRadius: "10px",
+						boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+						minWidth: 200,
+						padding: "4px",
+						border: "1px solid #f1f1f1",
+					},
+				}}
+			>
+				<MenuItem
+					sx={{ ...menuItemStyle, color: theme }}
+					disabled={!id}
+					onClick={() => {
+						nav(`/warehouses/stock-transfer/${id}/view`);
+						setAnchorEl(null);
+					}}
+					title="View"
+				>
+					<i className="ri-eye-line" />
+					View
+				</MenuItem>
+
+				<Divider variant="middle" component="li" flexItem />
+
+				{allowUpdate && (
+					<MenuItem
+						sx={{
+							...menuItemStyle,
+							color: canEdit ? theme : "#6c757d",
+						}}
+						disabled={!id || !canEdit}
+						onClick={() => {
+							nav(`/warehouses/stock-transfer/${id}/edit`);
+							setAnchorEl(null);
+						}}
+						title="Edit"
+					>
+						<i className="ri-pencil-line" />
+						Edit
+					</MenuItem>
+				)}
+				<Divider variant="middle" component="li" flexItem />
+
+				{allowUpdate && (
+					<MenuItem
+						sx={{
+							...menuItemStyle,
+							color: canRevert ? theme : "#6c757d",
+						}}
+						disabled={!id || !canRevert || busy}
+						onClick={async () => {
+							const ok = window.confirm(
+								"Revert this stock transfer? Inventory will be restored.",
+							);
+							if (!ok) return;
+							setRevertingStId(id);
+							try {
+								await dispatch(revertStockTransferThunk(id)).unwrap();
+								toast.success("Stock transfer reverted");
+								dispatch(fetchStockTransfersThunk());
+							} catch (e: any) {
+								toast.error(e || "Failed to revert");
+							} finally {
+								setRevertingStId("");
+								setAnchorEl(null);
+							}
+						}}
+						title="Revert"
+					>
+						<i className="ri-arrow-go-back-line" />
+						{busy ? "..." : "Revert"}
+					</MenuItem>
+				)}
+			</Menu>
+		</>
+	);
+}
+
+function IssueToLabourRowActions({
+	row,
+	allowUpdate,
+	revertingLabourId,
+	setRevertingLabourId,
+	dispatch,
+	nav,
+}: {
+	row: IssueToLabour;
+	allowUpdate: boolean;
+	revertingLabourId: string;
+	setRevertingLabourId: (v: string) => void;
+	dispatch: AppDispatch;
+	nav: ReturnType<typeof useNavigate>;
+}) {
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+	const d: any = row;
+	const id = String(d?.id || d?._id || "").trim();
+	const status = String(d?.status || "ISSUED").toUpperCase();
+	const canEdit = status === "ISSUED";
+	const canRevert = status === "ISSUED";
+	const busy = revertingLabourId === id;
+	const open = Boolean(anchorEl);
+
+	return (
+		<>
+			<IconButton
+				size="small"
+				onClick={(e) => setAnchorEl(e.currentTarget)}
+				sx={{
+					color: theme,
+					background: "#edf6f5",
+					borderRadius: "8px",
+					width: 32,
+					height: 32,
+					transition: "all .15s ease",
+					"&:hover": {
+						background: "#dff1ef",
+					},
+				}}
+			>
+				<i className="ri-more-2-fill" />
+			</IconButton>
+
+			<Menu
+				anchorEl={anchorEl}
+				open={open}
+				disableScrollLock
+				onClose={() => setAnchorEl(null)}
+				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				transformOrigin={{ vertical: "top", horizontal: "right" }}
+				PaperProps={{
+					sx: {
+						borderRadius: "10px",
+						boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+						minWidth: 200,
+						padding: "4px",
+						border: "1px solid #f1f1f1",
+					},
+				}}
+			>
+				<MenuItem
+					sx={{ ...menuItemStyle, color: theme }}
+					disabled={!id}
+					onClick={() => {
+						nav(`/warehouses/issue-to-labour/${id}/view`);
+						setAnchorEl(null);
+					}}
+					title="View"
+				>
+					<i className="ri-eye-line" />
+					View
+				</MenuItem>
+				<Divider variant="middle" component="li" flexItem />
+
+				{allowUpdate && (
+					<MenuItem
+						sx={{ ...menuItemStyle, color: theme }}
+						disabled={!id || !canEdit}
+						onClick={() => {
+							nav(`/warehouses/issue-to-labour/${id}/edit`);
+							setAnchorEl(null);
+						}}
+						title="Edit"
+					>
+						<i className="ri-pencil-line" />
+						Edit
+					</MenuItem>
+				)}
+				<Divider variant="middle" component="li" flexItem />
+				{allowUpdate && (
+					<MenuItem
+						sx={{ ...menuItemStyle, color: theme }}
+						disabled={!id || !canRevert || busy}
+						onClick={async () => {
+							const ok = window.confirm(
+								"Revert this issue to labour? Inventory will be restored.",
+							);
+							if (!ok) return;
+
+							setRevertingLabourId(id);
+
+							try {
+								await dispatch(revertIssueToLabourThunk(id)).unwrap();
+								toast.success("Issue to labour reverted");
+								dispatch(fetchIssueToLaboursThunk());
+							} catch (e: any) {
+								toast.error(e || "Failed to revert");
+							} finally {
+								setRevertingLabourId("");
+								setAnchorEl(null);
+							}
+						}}
+						title="Revert"
+					>
+						<i className="ri-arrow-go-back-line" />
+						{busy ? "..." : "Revert"}
+					</MenuItem>
+				)}
+			</Menu>
+		</>
+	);
+}
 
 export default function DispatchList() {
 	const dispatch = useDispatch<AppDispatch>();
@@ -239,6 +934,8 @@ export default function DispatchList() {
 
 	const readyCol = createColumnHelper<ReadyToDispatchOrder>();
 	const listCol = createColumnHelper<DispatchType>();
+	const stCol = createColumnHelper<StockTransfer>();
+	const labourCol = createColumnHelper<IssueToLabour>();
 
 	const readyColumns = useMemo(
 		() => [
@@ -300,175 +997,28 @@ export default function DispatchList() {
 			readyCol.display({
 				id: "actions",
 				header: "Action",
-				cell: ({ row }) => {
-					const o: any = row.original;
-					const rowId = String(pickId(o) || "").trim();
-					const orderId = String(o?.orderId || pickId(o) || "").trim();
-					const quotationId = String(o?.quotationId || "").trim();
-					const status = String(o?.orderStatus || o?.status || "");
-					const isOrderRow = !!orderId;
-					const isQuotationRow = !!quotationId;
-					const canCreateDispatch =
-						status === "REQUESTED_FOR_DISPATCH" || status === "WON";
-					const revertBusy = revertingId === rowId;
-
-					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-					const open = Boolean(anchorEl);
-					const menuItemStyle = {
-						fontSize: "14px",
-						borderRadius: "6px",
-						display: "flex",
-						alignItems: "center",
-						gap: "10px",
-						padding: "8px 12px",
-						minHeight: "36px",
-						fontWeight: 500,
-
-						"& i": {
-							fontSize: "18px",
-							width: "18px",
-							textAlign: "center",
-						},
-
-						"&:hover": {
-							background: "#f5f7f9",
-						},
-
-						"&.Mui-disabled": {
-							opacity: 0.5,
-						},
-					};
-
-					return (
-						<>
-							<IconButton
-								size='small'
-								onClick={(e) => setAnchorEl(e.currentTarget)}
-								sx={{
-									color: theme,
-									background: "#edf6f5",
-									borderRadius: "8px",
-									width: 32,
-									height: 32,
-									transition: "all .15s ease",
-									"&:hover": {
-										background: "#dff1ef",
-									},
-								}}
-							>
-								<i className='ri-more-2-fill' />
-							</IconButton>
-
-							<Menu
-								anchorEl={anchorEl}
-								open={open}
-								disableScrollLock
-								onClose={() => setAnchorEl(null)}
-								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-								transformOrigin={{ vertical: "top", horizontal: "right" }}
-								PaperProps={{
-									sx: {
-										borderRadius: "10px",
-										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-										minWidth: 200,
-										padding: "4px",
-										border: "1px solid #f1f1f1",
-									},
-								}}
-							>
-								<MenuItem
-									sx={{ ...menuItemStyle, color: theme }}
-									disabled={!isOrderRow}
-									onClick={() => {
-										nav(`/orders/${orderId}`);
-										setAnchorEl(null);
-									}}
-								>
-									<i className='ri-eye-line' />
-									View Order
-								</MenuItem>
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowUpdate && (
-									<MenuItem
-										sx={{ ...menuItemStyle, color: "#cf1322" }}
-										disabled={!rowId || revertBusy || revertingReady}
-										onClick={async () => {
-											try {
-												const ok = window.confirm(
-													"Revert this ready-to-dispatch entry?",
-												);
-												if (!ok) return;
-
-												setRevertingId(rowId);
-
-												if (isQuotationRow) {
-													await dispatch(
-														revertReadyDispatchThunk(rowId),
-													).unwrap();
-													toast.success("Quotation dispatch request reverted");
-												} else {
-													await dispatch(
-														changeOrderStatusThunk({
-															id: orderId,
-															status: "PENDING",
-														}),
-													).unwrap();
-													toast.success("Order reverted to Pending");
-												}
-
-												dispatch(fetchReadyToDispatchThunk());
-												dispatch(fetchDispatchesThunk());
-											} catch (e: any) {
-												toast.error(e || "Failed to revert");
-											} finally {
-												setRevertingId("");
-												setAnchorEl(null);
-											}
-										}}
-									>
-										<i className='ri-arrow-go-back-line' />
-										Revert
-									</MenuItem>
-								)}
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowCreate && (
-									<MenuItem
-										sx={{ ...menuItemStyle, color: "#096dd9" }}
-										disabled={
-											!canCreateDispatch || (!isOrderRow && !isQuotationRow)
-										}
-										onClick={() => {
-											if (isOrderRow) {
-												nav(`/warehouses/dispatch/${orderId}/create`);
-											} else {
-												nav(
-													`/warehouses/dispatch/new?sourceType=QUOTATION&sourceId=${quotationId}`,
-												);
-											}
-											setAnchorEl(null);
-										}}
-									>
-										<i className='ri-truck-line' />
-										Create Dispatch
-									</MenuItem>
-								)}
-							</Menu>
-						</>
-					);
-				},
+				cell: ({ row }) => (
+					<ReadyRowActions
+						row={row.original}
+						allowCreate={allowCreate}
+						allowUpdate={allowUpdate}
+						revertingReady={revertingReady}
+						revertingId={revertingId}
+						setRevertingId={setRevertingId}
+						dispatch={dispatch}
+						nav={nav}
+					/>
+				),
 			}),
 		],
 		[
 			readyCol,
-			nav,
-			dispatch,
-			revertingId,
-			revertingReady,
 			allowCreate,
 			allowUpdate,
+			revertingReady,
+			revertingId,
+			dispatch,
+			nav,
 		],
 	);
 
@@ -552,157 +1102,20 @@ export default function DispatchList() {
 			listCol.display({
 				id: "actions",
 				header: "Action",
-				cell: ({ row }) => {
-					const d: any = row.original;
-					const currentDispatchId =
-						pickId(d) || String(d?.dispatchId || d?.dispatchNo || "").trim();
-					const status = String(d?.dispatchStatus || "PENDING");
-					const returnStatus = String(
-						d?.returnedItemStatus || "NOT_RETURNED",
-					).toUpperCase();
-					const canDeliver = status === "PENDING";
-					const canReturn =
-						status === "DELIVERED" && returnStatus === "NOT_RETURNED";
-					const busy = deliveringId === currentDispatchId;
-					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-					const open = Boolean(anchorEl);
-					const menuItemStyle = {
-						fontSize: "14px",
-						borderRadius: "6px",
-						display: "flex",
-						alignItems: "center",
-						gap: "10px",
-						padding: "8px 12px",
-						minHeight: "36px",
-						fontWeight: 500,
-
-						"& i": {
-							fontSize: "18px",
-							width: "18px",
-							textAlign: "center",
-						},
-
-						"&:hover": {
-							background: "#f5f7f9",
-						},
-
-						"&.Mui-disabled": {
-							opacity: 0.5,
-						},
-					};
-
-					return (
-						<>
-							<IconButton
-								size='small'
-								onClick={(e) => setAnchorEl(e.currentTarget)}
-								sx={{
-									color: theme,
-									background: "#edf6f5",
-									borderRadius: "8px",
-									width: 32,
-									height: 32,
-									transition: "all .15s ease",
-									"&:hover": {
-										background: "#dff1ef",
-									},
-								}}
-							>
-								<i className='ri-more-2-fill' />
-							</IconButton>
-
-							<Menu
-								anchorEl={anchorEl}
-								open={open}
-								disableScrollLock
-								onClose={() => setAnchorEl(null)}
-								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-								transformOrigin={{ vertical: "top", horizontal: "right" }}
-								PaperProps={{
-									sx: {
-										borderRadius: "10px",
-										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-										minWidth: 200,
-										padding: "4px",
-										border: "1px solid #f1f1f1",
-									},
-								}}
-							>
-								<MenuItem
-									sx={{ ...menuItemStyle, color: theme }}
-									disabled={!currentDispatchId}
-									onClick={() => {
-										nav(`/warehouses/dispatch/${currentDispatchId}/view`);
-										setAnchorEl(null);
-									}}
-								>
-									<i className='ri-eye-line' />
-									View Dispatch
-								</MenuItem>
-
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowUpdate && (
-									<MenuItem
-										sx={{ ...menuItemStyle, color: "#389e0d" }}
-										disabled={!currentDispatchId || !canDeliver || busy}
-										onClick={async () => {
-											try {
-												const ok = window.confirm(
-													"Mark this dispatch as Delivered?",
-												);
-												if (!ok) return;
-
-												setDeliveringId(currentDispatchId);
-												await dispatch(
-													deliverDispatchThunk(currentDispatchId),
-												).unwrap();
-												toast.success("Dispatch marked Delivered");
-
-												dispatch(fetchDispatchesThunk());
-												dispatch(fetchReadyToDispatchThunk());
-											} catch (e: any) {
-												toast.error(e || "Failed to deliver dispatch");
-											} finally {
-												setDeliveringId("");
-											}
-										}}
-										title='Deliver'
-									>
-										<i className='ri-check-double-line' />
-										Deliver
-										{busy ? "..." : ""}
-									</MenuItem>
-								)}
-
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowUpdate && canReturn && (
-									<MenuItem
-										sx={{ ...menuItemStyle, color: "#096dd9" }}
-										disabled={!currentDispatchId}
-										onClick={() =>
-											nav(
-												`/warehouses/dispatch/${currentDispatchId}/sales-return`,
-											)
-										}
-										title='Sales Return'
-									>
-										<i className='ri-arrow-go-back-line' />
-										Return
-									</MenuItem>
-								)}
-							</Menu>
-						</>
-					);
-				},
+				cell: ({ row }) => (
+					<DispatchRowActions
+						row={row.original}
+						allowUpdate={allowUpdate}
+						deliveringId={deliveringId}
+						setDeliveringId={setDeliveringId}
+						dispatch={dispatch}
+						nav={nav}
+					/>
+				),
 			}),
 		],
-		[listCol, nav, deliveringId, dispatch, allowUpdate],
+		[listCol, allowUpdate, deliveringId, dispatch, nav],
 	);
-
-	const stCol = createColumnHelper<StockTransfer>();
 
 	const stColumns = useMemo(
 		() => [
@@ -729,33 +1142,7 @@ export default function DispatchList() {
 			}),
 			stCol.accessor("status", {
 				header: "Dispatch Status",
-				cell: (i) => {
-					const s = String(i.getValue() || "DISPATCHED");
-					const map: Record<
-						string,
-						{ bg: string; text: string; label: string }
-					> = {
-						DISPATCHED: { bg: "#e6f7ff", text: "#096dd9", label: "Dispatched" },
-						COMPLETED: { bg: "#f6ffed", text: "#389e0d", label: "Completed" },
-						REVERTED: { bg: "#fff1f0", text: "#cf1322", label: "Reverted" },
-					};
-					const cfg = map[s] || map.DISPATCHED;
-					return (
-						<span
-							className='badge'
-							style={{
-								background: cfg.bg,
-								color: cfg.text,
-								border: `1px solid ${cfg.bg}`,
-								fontWeight: 600,
-								padding: "6px 10px",
-								borderRadius: 999,
-							}}
-						>
-							{cfg.label}
-						</span>
-					);
-				},
+				cell: (i) => stockTransferStatusBadge(i.getValue()),
 			}),
 			stCol.accessor(
 				(row) => {
@@ -773,146 +1160,20 @@ export default function DispatchList() {
 			stCol.display({
 				id: "actions",
 				header: "Action",
-				cell: ({ row }) => {
-					const o: any = row.original;
-					const id = String(o?.id || o?._id || "").trim();
-					const status = String(o?.status || "DISPATCHED");
-					const canEdit = status === "DISPATCHED";
-					const canRevert = status === "DISPATCHED";
-					const busy = revertingStId === id;
-					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-					const open = Boolean(anchorEl);
-					const menuItemStyle = {
-						fontSize: "14px",
-						borderRadius: "6px",
-						display: "flex",
-						alignItems: "center",
-						gap: "10px",
-						padding: "8px 12px",
-						minHeight: "36px",
-						fontWeight: 500,
-
-						"& i": {
-							fontSize: "18px",
-							width: "18px",
-							textAlign: "center",
-						},
-
-						"&:hover": {
-							background: "#f5f7f9",
-						},
-
-						"&.Mui-disabled": {
-							opacity: 0.5,
-						},
-					};
-
-					return (
-						<>
-							<IconButton
-								size='small'
-								onClick={(e) => setAnchorEl(e.currentTarget)}
-								sx={{
-									color: theme,
-									background: "#edf6f5",
-									borderRadius: "8px",
-									width: 32,
-									height: 32,
-									transition: "all .15s ease",
-									"&:hover": {
-										background: "#dff1ef",
-									},
-								}}
-							>
-								<i className='ri-more-2-fill' />
-							</IconButton>
-
-							<Menu
-								anchorEl={anchorEl}
-								open={open}
-								disableScrollLock
-								onClose={() => setAnchorEl(null)}
-								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-								transformOrigin={{ vertical: "top", horizontal: "right" }}
-								PaperProps={{
-									sx: {
-										borderRadius: "10px",
-										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-										minWidth: 200,
-										padding: "4px",
-										border: "1px solid #f1f1f1",
-									},
-								}}
-							>
-								<MenuItem
-									sx={{ ...menuItemStyle, color: theme }}
-									disabled={!id}
-									onClick={() => nav(`/warehouses/stock-transfer/${id}/view`)}
-									title='View'
-								>
-									<i className='ri-eye-line' />
-									View
-								</MenuItem>
-
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowUpdate && (
-									<MenuItem
-										sx={{
-											...menuItemStyle,
-											color: canEdit ? theme : "#6c757d",
-										}}
-										disabled={!id || !canEdit}
-										onClick={() => nav(`/warehouses/stock-transfer/${id}/edit`)}
-										title='Edit'
-									>
-										<i className='ri-pencil-line' />
-										Edit
-									</MenuItem>
-								)}
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowUpdate && (
-									<MenuItem
-										sx={{
-											...menuItemStyle,
-											color: canRevert ? theme : "#6c757d",
-										}}
-										disabled={!id || !canRevert || busy}
-										onClick={async () => {
-											const ok = window.confirm(
-												"Revert this stock transfer? Inventory will be restored.",
-											);
-											if (!ok) return;
-											setRevertingStId(id);
-											try {
-												await dispatch(revertStockTransferThunk(id)).unwrap();
-												toast.success("Stock transfer reverted");
-												dispatch(fetchStockTransfersThunk());
-											} catch (e: any) {
-												toast.error(e || "Failed to revert");
-											} finally {
-												setRevertingStId("");
-											}
-										}}
-										title='Revert'
-									>
-										<i className='ri-arrow-go-back-line' />
-										{busy ? "..." : ""}
-										Revert
-									</MenuItem>
-								)}
-							</Menu>
-						</>
-					);
-				},
+				cell: ({ row }) => (
+					<StockTransferRowActions
+						row={row.original}
+						allowUpdate={allowUpdate}
+						revertingStId={revertingStId}
+						setRevertingStId={setRevertingStId}
+						dispatch={dispatch}
+						nav={nav}
+					/>
+				),
 			}),
 		],
-		[stCol, nav, dispatch, revertingStId, allowUpdate],
+		[stCol, allowUpdate, revertingStId, dispatch, nav],
 	);
-
-	const labourCol = createColumnHelper<IssueToLabour>();
 
 	const labourColumns = useMemo(
 		() => [
@@ -974,140 +1235,187 @@ export default function DispatchList() {
 			labourCol.display({
 				id: "actions",
 				header: "Actions",
-				cell: ({ row }) => {
-					const d: any = row.original;
-					const id = String(d?.id || d?._id || "").trim();
-					const status = String(d?.status || "ISSUED").toUpperCase();
-					const canEdit = status === "ISSUED";
-					const canRevert = status === "ISSUED";
-					const busy = revertingLabourId === id;
-
-					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-					const open = Boolean(anchorEl);
-					const menuItemStyle = {
-						fontSize: "14px",
-						borderRadius: "6px",
-						display: "flex",
-						alignItems: "center",
-						gap: "10px",
-						padding: "8px 12px",
-						minHeight: "36px",
-						fontWeight: 500,
-
-						"& i": {
-							fontSize: "18px",
-							width: "18px",
-							textAlign: "center",
-						},
-
-						"&:hover": {
-							background: "#f5f7f9",
-						},
-
-						"&.Mui-disabled": {
-							opacity: 0.5,
-						},
-					};
-
-					return (
-						<>
-							<IconButton
-								size='small'
-								onClick={(e) => setAnchorEl(e.currentTarget)}
-								sx={{
-									color: theme,
-									background: "#edf6f5",
-									borderRadius: "8px",
-									width: 32,
-									height: 32,
-									transition: "all .15s ease",
-									"&:hover": {
-										background: "#dff1ef",
-									},
-								}}
-							>
-								<i className='ri-more-2-fill' />
-							</IconButton>
-
-							<Menu
-								anchorEl={anchorEl}
-								open={open}
-								disableScrollLock
-								onClose={() => setAnchorEl(null)}
-								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-								transformOrigin={{ vertical: "top", horizontal: "right" }}
-								PaperProps={{
-									sx: {
-										borderRadius: "10px",
-										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-										minWidth: 200,
-										padding: "4px",
-										border: "1px solid #f1f1f1",
-									},
-								}}
-							>
-								<MenuItem
-									sx={{ ...menuItemStyle, color: theme }}
-									disabled={!id}
-									onClick={() => nav(`/warehouses/issue-to-labour/${id}/view`)}
-									title='View'
-								>
-									<i className='ri-eye-line' />
-									View
-								</MenuItem>
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowUpdate && (
-									<MenuItem
-										sx={{ ...menuItemStyle, color: theme }}
-										disabled={!id || !canEdit}
-										onClick={() =>
-											nav(`/warehouses/issue-to-labour/${id}/edit`)
-										}
-										title='Edit'
-									>
-										<i className='ri-pencil-line' />
-										Edit
-									</MenuItem>
-								)}
-								<Divider variant='middle' component='li' flexItem={true} />
-								{allowUpdate && (
-									<MenuItem
-										sx={{ ...menuItemStyle, color: theme }}
-										disabled={!id || !canRevert || busy}
-										onClick={async () => {
-											const ok = window.confirm(
-												"Revert this issue to labour? Inventory will be restored.",
-											);
-											if (!ok) return;
-
-											setRevertingLabourId(id);
-
-											try {
-												await dispatch(revertIssueToLabourThunk(id)).unwrap();
-												toast.success("Issue to labour reverted");
-												dispatch(fetchIssueToLaboursThunk());
-											} catch (e: any) {
-												toast.error(e || "Failed to revert");
-											} finally {
-												setRevertingLabourId("");
-											}
-										}}
-										title='Revert'
-									>
-										<i className='ri-arrow-go-back-line' />
-										{busy ? "..." : "Revert"}
-									</MenuItem>
-								)}
-							</Menu>
-						</>
-					);
-				},
+				cell: ({ row }) => (
+					<IssueToLabourRowActions
+						row={row.original}
+						allowUpdate={allowUpdate}
+						revertingLabourId={revertingLabourId}
+						setRevertingLabourId={setRevertingLabourId}
+						dispatch={dispatch}
+						nav={nav}
+					/>
+				),
 			}),
 		],
-		[labourCol, nav, dispatch, revertingLabourId, allowUpdate],
+		[labourCol, allowUpdate, revertingLabourId, dispatch, nav],
 	);
+
+	const handleExport = () => {
+		const today = new Date();
+		const yyyy = today.getFullYear();
+		const mm = String(today.getMonth() + 1).padStart(2, "0");
+		const dd = String(today.getDate()).padStart(2, "0");
+
+		if (activeTab === "READY") {
+			const headers = [
+				"Sr No",
+				"Order No",
+				"Quotation No",
+				"Date",
+				"Status",
+				"Customer Name",
+				"Dispatch From Warehouse",
+				"Created By / Date",
+				"Updated By / Date",
+			];
+
+			const rows = (ready || []).map((row: any, idx: number) => [
+				idx + 1,
+				row?.orderNo || "-",
+				row?.quotationNo || "-",
+				fmtDateTime(row?.orderDate),
+				orderStatusLabel(row?.orderStatus),
+				row?.customerName || "-",
+				row?.dispatchFromWarehouseName || "-",
+				(() => {
+					const name = pickName(row?.createdBy);
+					const date = fmtDateTime(row?.createdAt);
+					if (name && row?.createdAt) return `${name} - ${date}`;
+					return name || date || "-";
+				})(),
+				(() => {
+					const name = pickName(row?.updatedBy);
+					const date = fmtDateTime(row?.updatedAt);
+					if (name && row?.updatedAt) return `${name} - ${date}`;
+					return name || date || "-";
+				})(),
+			]);
+
+			downloadCsv(`ready_for_dispatch_${yyyy}-${mm}-${dd}.csv`, headers, rows);
+			toast.success("Ready For Dispatch exported successfully");
+			return;
+		}
+
+		if (activeTab === "DISPATCH") {
+			const headers = [
+				"Sr No",
+				"Dispatch No",
+				"Dispatch Date",
+				"Order No",
+				"Quotation No",
+				"Dispatch Type",
+				"Issued From Warehouse",
+				"Customer Name",
+				"Dispatch Status",
+				"Return Status",
+				"Created By / Date",
+				"Updated By / Date",
+			];
+
+			const rows = (dispatches || []).map((row: any, idx: number) => [
+				idx + 1,
+				row?.dispatchNo || row?.dispatchId || row?.id || row?._id || "-",
+				fmtDateTime(row?.dispatchDate),
+				row?.orderNo || "-",
+				row?.quotationNo || "-",
+				row?.dispatchType || "-",
+				row?.issuedFromWarehouseName || "-",
+				row?.customerName || "-",
+				dispatchStatusLabel(row?.dispatchStatus),
+				returnStatusLabel(row?.returnedItemStatus),
+				(() => {
+					const name = pickName(row?.createdBy);
+					const date = fmtDateTime(row?.createdAt);
+					if (name && row?.createdAt) return `${name} - ${date}`;
+					return name || date || "-";
+				})(),
+				(() => {
+					const name = pickName(row?.updatedBy);
+					const date = fmtDateTime(row?.updatedAt);
+					if (name && row?.updatedAt) return `${name} - ${date}`;
+					return name || date || "-";
+				})(),
+			]);
+
+			downloadCsv(`dispatch_list_${yyyy}-${mm}-${dd}.csv`, headers, rows);
+			toast.success("Dispatch List exported successfully");
+			return;
+		}
+
+		if (activeTab === "STOCK_TRANSFER") {
+			const headers = [
+				"Sr No",
+				"Transfer No",
+				"Transfer Date",
+				"Transfer From",
+				"Transfer To",
+				"Dispatch Status",
+				"Created By / Date",
+			];
+
+			const rows = (stockTransfers || []).map((row: any, idx: number) => [
+				idx + 1,
+				row?.transferNo || "-",
+				fmtDateTime(row?.transferDate),
+				row?.transferFromWarehouse || "-",
+				row?.transferToWarehouse || "-",
+				stockTransferStatusLabel(row?.status),
+				(() => {
+					const name = pickName(row?.createdBy);
+					const date = fmtDateTime(row?.createdAt);
+					if (name && row?.createdAt) return `${name} - ${date}`;
+					return name || date || "-";
+				})(),
+			]);
+
+			downloadCsv(`stock_transfer_list_${yyyy}-${mm}-${dd}.csv`, headers, rows);
+			toast.success("Stock Transfer List exported successfully");
+			return;
+		}
+
+		if (activeTab === "ISSUE_TO_LABOUR") {
+			const headers = [
+				"Sr No",
+				"Dispatch ID",
+				"Issued Date",
+				"Issued From",
+				"Labour Name",
+				"Dispatch Status",
+				"Remarks",
+				"Created By / Date",
+				"Updated By / Date",
+			];
+
+			const rows = (issueToLabours || []).map((row: any, idx: number) => [
+				idx + 1,
+				row?.issueNo || "-",
+				fmtDateTime(row?.issueDate),
+				row?.issueFromWarehouse || "-",
+				row?.labourName || "-",
+				labourStatusLabel(row?.status),
+				row?.remarks || "-",
+				(() => {
+					const name = pickName(row?.createdBy);
+					const date = fmtDateTime(row?.createdAt);
+					if (name && row?.createdAt) return `${name} - ${date}`;
+					return name || date || "-";
+				})(),
+				(() => {
+					const name = pickName(row?.updatedBy);
+					const date = fmtDateTime(row?.updatedAt);
+					if (name && row?.updatedAt) return `${name} - ${date}`;
+					return name || date || "-";
+				})(),
+			]);
+
+			downloadCsv(
+				`issue_to_labour_list_${yyyy}-${mm}-${dd}.csv`,
+				headers,
+				rows,
+			);
+			toast.success("Issue To Labour List exported successfully");
+		}
+	};
 
 	return (
 		<>
@@ -1148,14 +1456,14 @@ export default function DispatchList() {
 				}
 			`}</style>
 
-			<div className='d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2'>
-				<h4 className='mb-0 fw-bold' style={{ color: "#111" }}>
+			<div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+				<h4 className="mb-0 fw-bold" style={{ color: "#111" }}>
 					Dispatch
 				</h4>
 
-				<div className='d-flex gap-2 align-items-center'>
+				<div className="d-flex gap-2 align-items-center">
 					<Button
-						variant='light'
+						variant="light"
 						onClick={() => {
 							if (activeTab === "READY") dispatch(fetchReadyToDispatchThunk());
 							else if (activeTab === "DISPATCH")
@@ -1174,12 +1482,12 @@ export default function DispatchList() {
 							gap: "6px",
 						}}
 					>
-						<i className='ri-refresh-line' /> Refresh
+						<i className="ri-refresh-line" /> Refresh
 					</Button>
 
 					<Button
-						variant='light'
-						onClick={() => toast.info("Export not connected yet")}
+						variant="light"
+						onClick={handleExport}
 						style={{
 							border: "1px solid #e9ebec",
 							fontSize: "13px",
@@ -1189,7 +1497,7 @@ export default function DispatchList() {
 							gap: "6px",
 						}}
 					>
-						<i className='ri-upload-2-line' /> Export
+						<i className="ri-upload-2-line" /> Export
 					</Button>
 
 					{allowCreate && activeTab === "STOCK_TRANSFER" && (
@@ -1205,7 +1513,7 @@ export default function DispatchList() {
 								gap: "6px",
 							}}
 						>
-							<i className='ri-add-circle-line' /> Create Transfer
+							<i className="ri-add-circle-line" /> Create Transfer
 						</Button>
 					)}
 
@@ -1222,17 +1530,17 @@ export default function DispatchList() {
 								gap: "6px",
 							}}
 						>
-							<i className='ri-add-circle-line' /> Issue To Labour
+							<i className="ri-add-circle-line" /> Issue To Labour
 						</Button>
 					)}
 				</div>
 			</div>
 
-			<div className='dispatch-tabs'>
+			<div className="dispatch-tabs">
 				<button
 					className={`dispatch-tab-btn ${activeTab === "READY" ? "active" : ""}`}
 					onClick={() => setActiveTab("READY")}
-					type='button'
+					type="button"
 				>
 					Ready for Dispatch
 				</button>
@@ -1240,7 +1548,7 @@ export default function DispatchList() {
 				<button
 					className={`dispatch-tab-btn ${activeTab === "DISPATCH" ? "active" : ""}`}
 					onClick={() => setActiveTab("DISPATCH")}
-					type='button'
+					type="button"
 				>
 					Dispatch
 				</button>
@@ -1248,7 +1556,7 @@ export default function DispatchList() {
 				<button
 					className={`dispatch-tab-btn ${activeTab === "STOCK_TRANSFER" ? "active" : ""}`}
 					onClick={() => setActiveTab("STOCK_TRANSFER")}
-					type='button'
+					type="button"
 				>
 					Stock Transfer
 					{stockTransfers.filter((t: any) => t?.status === "DISPATCHED")
@@ -1275,7 +1583,7 @@ export default function DispatchList() {
 				<button
 					className={`dispatch-tab-btn ${activeTab === "ISSUE_TO_LABOUR" ? "active" : ""}`}
 					onClick={() => setActiveTab("ISSUE_TO_LABOUR")}
-					type='button'
+					type="button"
 				>
 					Issue To Labour
 					{issueToLabours.filter((t: any) => t?.status === "ISSUED").length >
@@ -1297,54 +1605,54 @@ export default function DispatchList() {
 				</button>
 			</div>
 
-			{error && <Alert variant='danger'>{error}</Alert>}
+			{error && <Alert variant="danger">{error}</Alert>}
 
 			{activeTab === "READY" ? (
 				loadingReady ? (
-					<div className='d-flex justify-content-center py-5'>
-						<Spinner animation='border' style={{ color: theme }} />
+					<div className="d-flex justify-content-center py-5">
+						<Spinner animation="border" style={{ color: theme }} />
 					</div>
 				) : (
 					<BasicTable
 						data={ready || []}
 						columns={readyColumns}
-						title='Ready For Dispatch'
+						title="Ready For Dispatch"
 					/>
 				)
 			) : activeTab === "DISPATCH" ? (
 				loadingList ? (
-					<div className='d-flex justify-content-center py-5'>
-						<Spinner animation='border' style={{ color: theme }} />
+					<div className="d-flex justify-content-center py-5">
+						<Spinner animation="border" style={{ color: theme }} />
 					</div>
 				) : (
 					<BasicTable
 						data={dispatches || []}
 						columns={dispatchColumns}
-						title='Dispatch List'
+						title="Dispatch List"
 					/>
 				)
 			) : activeTab === "STOCK_TRANSFER" ? (
 				stLoading ? (
-					<div className='d-flex justify-content-center py-5'>
-						<Spinner animation='border' style={{ color: theme }} />
+					<div className="d-flex justify-content-center py-5">
+						<Spinner animation="border" style={{ color: theme }} />
 					</div>
 				) : (
 					<BasicTable
 						data={stockTransfers || []}
 						columns={stColumns}
-						title='Stock Transfer List'
+						title="Stock Transfer List"
 					/>
 				)
 			) : activeTab === "ISSUE_TO_LABOUR" ? (
 				labourLoading ? (
-					<div className='d-flex justify-content-center py-5'>
-						<Spinner animation='border' style={{ color: theme }} />
+					<div className="d-flex justify-content-center py-5">
+						<Spinner animation="border" style={{ color: theme }} />
 					</div>
 				) : (
 					<BasicTable
 						data={issueToLabours || []}
 						columns={labourColumns}
-						title='Issue To Labour List'
+						title="Issue To Labour List"
 					/>
 				)
 			) : null}

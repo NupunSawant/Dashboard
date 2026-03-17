@@ -1,5 +1,3 @@
-// pages/Order/OrdersList.tsx
-
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Spinner, Button, Form } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
@@ -18,6 +16,7 @@ import Menu from "@mui/material/Menu";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import MenuItem from "@mui/material/MenuItem";
+
 const theme = "#1a8376";
 
 const fmtDateTime = (val: any) => {
@@ -28,6 +27,20 @@ const fmtDateTime = (val: any) => {
 	} catch {
 		return String(val);
 	}
+};
+
+const getStatusLabel = (status?: OrderStatus | string) => {
+	const s = String(status || "PENDING");
+
+	const map: Record<string, string> = {
+		PENDING: "Pending",
+		REQUESTED_FOR_DISPATCH: "Requested",
+		DISPATCHED: "Dispatched",
+		DELIVERED: "Delivered",
+		CANCELLED: "Cancelled",
+	};
+
+	return map[s] || "Pending";
 };
 
 const statusBadge = (status?: OrderStatus | string) => {
@@ -62,6 +75,215 @@ const statusBadge = (status?: OrderStatus | string) => {
 	);
 };
 
+const escapeCsvValue = (value: any) => {
+	if (value === null || value === undefined) return "";
+	const str = String(value).replace(/"/g, '""');
+	return `"${str}"`;
+};
+
+const exportOrdersToCsv = (
+	rows: Order[],
+	statusFilter: OrderStatus | "ALL",
+) => {
+	if (!rows?.length) {
+		toast.info("No data available to export");
+		return;
+	}
+
+	const headers = [
+		"Order No",
+		"Order Date",
+		"Customer",
+		"Dispatch From",
+		"Status",
+		"Items Count",
+		"Quotation No",
+	];
+
+	const csvRows = rows.map((row) => [
+		row.orderNo || "-",
+		fmtDateTime(row.orderDate),
+		row.customerName || "-",
+		row.dispatchFromWarehouseName || "-",
+		getStatusLabel(row.orderStatus),
+		row.items?.length ?? 0,
+		row.quotationNo || "-",
+	]);
+
+	const csvContent = [
+		headers.map(escapeCsvValue).join(","),
+		...csvRows.map((r) => r.map(escapeCsvValue).join(",")),
+	].join("\n");
+
+	const blob = new Blob([csvContent], {
+		type: "text/csv;charset=utf-8;",
+	});
+
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+
+	const fileStatus =
+		statusFilter === "ALL" ? "all" : String(statusFilter).toLowerCase();
+
+	const today = new Date();
+	const yyyy = today.getFullYear();
+	const mm = String(today.getMonth() + 1).padStart(2, "0");
+	const dd = String(today.getDate()).padStart(2, "0");
+
+	link.setAttribute("download", `orders_${fileStatus}_${yyyy}-${mm}-${dd}.csv`);
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	window.URL.revokeObjectURL(url);
+
+	toast.success("Orders exported successfully");
+};
+
+type RowActionsProps = {
+	order: Order;
+	allowUpdate: boolean;
+	changingStatus: boolean;
+	onView: (id: string) => void;
+	onEdit: (id: string) => void;
+	onRequestDispatch: (id: string) => Promise<void>;
+};
+
+function RowActions({
+	order,
+	allowUpdate,
+	changingStatus,
+	onView,
+	onEdit,
+	onRequestDispatch,
+}: RowActionsProps) {
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+	const orderId = (order as any)?.id || (order as any)?._id;
+	const status = String(order?.orderStatus || "PENDING");
+
+	const canRequestDispatch = allowUpdate && status === "PENDING";
+	const canEdit = allowUpdate && status === "PENDING";
+	const open = Boolean(anchorEl);
+
+	const menuItemStyle = {
+		fontSize: "14px",
+		borderRadius: "6px",
+		display: "flex",
+		alignItems: "center",
+		gap: "10px",
+		padding: "8px 12px",
+		minHeight: "36px",
+		fontWeight: 500,
+		"& i": {
+			fontSize: "18px",
+			width: "18px",
+			textAlign: "center",
+		},
+		"&:hover": {
+			background: "#f5f7f9",
+		},
+		"&.Mui-disabled": {
+			opacity: 0.5,
+		},
+	};
+
+	return (
+		<>
+			<IconButton
+				size='small'
+				onClick={(e) => setAnchorEl(e.currentTarget)}
+				sx={{
+					color: theme,
+					background: "#edf6f5",
+					borderRadius: "8px",
+					width: 32,
+					height: 32,
+					transition: "all .15s ease",
+					"&:hover": {
+						background: "#dff1ef",
+					},
+				}}
+			>
+				<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
+			</IconButton>
+
+			<Menu
+				anchorEl={anchorEl}
+				open={open}
+				disableScrollLock
+				onClose={() => setAnchorEl(null)}
+				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				transformOrigin={{ vertical: "top", horizontal: "right" }}
+				PaperProps={{
+					sx: {
+						borderRadius: "10px",
+						boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+						minWidth: 200,
+						padding: "4px",
+						border: "1px solid #f1f1f1",
+					},
+				}}
+			>
+				{allowUpdate && (
+					<MenuItem
+						sx={{
+							...menuItemStyle,
+							color: canRequestDispatch ? theme : "#6c757d",
+						}}
+						disabled={!orderId || !canRequestDispatch || changingStatus}
+						onClick={async () => {
+							setAnchorEl(null);
+							if (!orderId) return;
+							await onRequestDispatch(orderId);
+						}}
+					>
+						<i className='ri-send-plane-2-line' /> Request Dispatch
+					</MenuItem>
+				)}
+
+				<Divider variant='middle' component='li' flexItem />
+
+				{allowUpdate && (
+					<MenuItem
+						sx={{
+							...menuItemStyle,
+							color: theme,
+						}}
+						disabled={!orderId || !canEdit}
+						onClick={() => {
+							setAnchorEl(null);
+							if (!orderId) return;
+							onEdit(orderId);
+						}}
+					>
+						<i className='ri-pencil-line' />
+						Edit
+					</MenuItem>
+				)}
+
+				<Divider variant='middle' component='li' flexItem />
+
+				<MenuItem
+					sx={{
+						...menuItemStyle,
+						color: theme,
+					}}
+					disabled={!orderId}
+					onClick={() => {
+						setAnchorEl(null);
+						if (!orderId) return;
+						onView(orderId);
+					}}
+				>
+					<i className='ri-eye-line' />
+					View
+				</MenuItem>
+			</Menu>
+		</>
+	);
+}
+
 export default function OrdersList() {
 	const dispatch = useDispatch<AppDispatch>();
 	const nav = useNavigate();
@@ -83,6 +305,25 @@ export default function OrdersList() {
 			),
 		);
 	}, [dispatch, statusFilter]);
+
+	const handleRequestDispatch = async (orderId: string) => {
+		try {
+			await dispatch(
+				changeOrderStatusThunk({
+					id: orderId,
+					status: "REQUESTED_FOR_DISPATCH",
+				}),
+			).unwrap();
+
+			toast.success("Order sent to Ready To Dispatch");
+		} catch (e: any) {
+			toast.error(e || "Failed to request dispatch");
+		}
+	};
+
+	const handleExport = () => {
+		exportOrdersToCsv(orders || [], statusFilter);
+	};
 
 	const col = createColumnHelper<Order>();
 
@@ -120,139 +361,19 @@ export default function OrdersList() {
 			col.display({
 				id: "actions",
 				header: "Action",
-				cell: ({ row }) => {
-					const o = row.original as any;
-					const orderId = o?.id || o?._id;
-					const status = String(o?.orderStatus || "PENDING");
-
-					const canRequestDispatch = allowUpdate && status === "PENDING";
-					const canEdit = allowUpdate && status === "PENDING";
-
-					const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-					const open = Boolean(anchorEl);
-					const menuItemStyle = {
-						fontSize: "14px",
-						borderRadius: "6px",
-						display: "flex",
-						alignItems: "center",
-						gap: "10px",
-						padding: "8px 12px",
-						minHeight: "36px",
-						fontWeight: 500,
-
-						"& i": {
-							fontSize: "18px",
-							width: "18px",
-							textAlign: "center",
-						},
-
-						"&:hover": {
-							background: "#f5f7f9",
-						},
-
-						"&.Mui-disabled": {
-							opacity: 0.5,
-						},
-					};
-
-					return (
-						<>
-							<IconButton
-								size='small'
-								onClick={(e) => setAnchorEl(e.currentTarget)}
-								sx={{
-									color: theme,
-									background: "#edf6f5",
-									borderRadius: "8px",
-									width: 32,
-									height: 32,
-									transition: "all .15s ease",
-									"&:hover": {
-										background: "#dff1ef",
-									},
-								}}
-							>
-								<i className='ri-more-2-fill' style={{ fontSize: 18 }} />
-							</IconButton>
-
-							<Menu
-								anchorEl={anchorEl}
-								open={open}
-								disableScrollLock
-								onClose={() => setAnchorEl(null)}
-								anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-								transformOrigin={{ vertical: "top", horizontal: "right" }}
-								PaperProps={{
-									sx: {
-										borderRadius: "10px",
-										boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-										minWidth: 200,
-										padding: "4px",
-										border: "1px solid #f1f1f1",
-									},
-								}}
-							>
-								{allowUpdate && (
-									<MenuItem
-										sx={{
-											...menuItemStyle,
-											color: canRequestDispatch ? "white" : "#6c757d",
-										}}
-										disabled={!orderId || !canRequestDispatch || changingStatus}
-										onClick={async () => {
-											try {
-												await dispatch(
-													changeOrderStatusThunk({
-														id: orderId,
-														status: "REQUESTED_FOR_DISPATCH",
-													}),
-												).unwrap();
-
-												toast.success("Order sent to Ready To Dispatch");
-											} catch (e: any) {
-												toast.error(e || "Failed to request dispatch");
-											}
-										}}
-									>
-										<i className='ri-send-plane-2-line' /> Request Dispatch
-									</MenuItem>
-								)}
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								{allowUpdate && (
-									<MenuItem
-										sx={{
-											...menuItemStyle,
-											color: theme,
-										}}
-										disabled={!orderId || !canEdit}
-										onClick={() => nav(`/orders/${orderId}/edit`)}
-									>
-										<i className='ri-pencil-line' />
-										Edit
-									</MenuItem>
-								)}
-								<Divider variant='middle' component='li' flexItem={true} />
-
-								<MenuItem
-									sx={{
-										...menuItemStyle,
-										color: theme,
-									}}
-									disabled={!orderId}
-									onClick={() => nav(`/orders/${orderId}`)}
-								>
-									<i className='ri-eye-line' />
-									View
-								</MenuItem>
-							</Menu>
-						</>
-					);
-				},
+				cell: ({ row }) => (
+					<RowActions
+						order={row.original}
+						allowUpdate={allowUpdate}
+						changingStatus={changingStatus}
+						onView={(id) => nav(`/orders/${id}`)}
+						onEdit={(id) => nav(`/orders/${id}/edit`)}
+						onRequestDispatch={handleRequestDispatch}
+					/>
+				),
 			}),
 		],
-		[col, nav, dispatch, changingStatus, allowUpdate],
+		[col, nav, allowUpdate, changingStatus],
 	);
 
 	return (
@@ -291,6 +412,7 @@ export default function OrdersList() {
 
 							<Button
 								variant='light'
+								onClick={handleExport}
 								style={{
 									border: "1px solid #e9ebec",
 									fontSize: "13px",
